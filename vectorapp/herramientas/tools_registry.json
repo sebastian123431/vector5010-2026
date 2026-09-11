@@ -1,0 +1,58 @@
+{
+  "comparar_pares": {
+    "name": "comparar_pares",
+    "file_path": "D:\\escritorio\\vector5010 2026\\vectorapp\\herramientas\\comparar_pares.py",
+    "created_at": "2026-09-08T17:01:24.747540",
+    "description": "Compara y verifica si un numero es par",
+    "status": "active",
+    "successful_uses": 3,
+    "code_signature": "{\"classes\": [], \"code_length\": 68, \"complexity\": 1, \"functions\": [\"comparar_pares\"], \"imports\": []}",
+    "learning_data": {
+      "created_from_request": "Compara y verifica si un numero es par",
+      "reuse_count": 0,
+      "adaptation_count": 0
+    }
+  },
+  "calcular_probabilidad_lluvia": {
+    "name": "calcular_probabilidad_lluvia",
+    "file_path": "D:\\escritorio\\vector5010 2026\\vectorapp\\herramientas\\calcular_probabilidad_lluvia.py",
+    "created_at": "2026-09-10T17:54:17.444726",
+    "description": "Código generado para: generame un codigo en base a la ubicacion meteorologia en si y centrate en aprox",
+    "status": "active",
+    "successful_uses": 0,
+    "code_signature": "{\"classes\": [], \"code_length\": 787, \"complexity\": 1, \"functions\": [\"calcular_probabilidad_lluvia\"], \"imports\": [\"pandas\"]}",
+    "learning_data": {
+      "created_from_request": "Código generado para: generame un codigo en base a la ubicacion meteorologia en si y centrate en aprox",
+      "reuse_count": 0,
+      "adaptation_count": 0
+    }
+  },
+  "calculations_235045": {
+    "name": "calculations_235045",
+    "file_path": "D:\\escritorio\\vector5010 2026\\vectorapp\\herramientas\\calculations_235045.py",
+    "created_at": "2026-09-10T23:50:45.136330",
+    "description": "Herramienta para: repara este código javascript por favor: function calcularTotal(precio, tasa) { var total = precio == 0 ? 0 : precio * tasa; document.getElementById('resultado').innerText = total; return total;",
+    "status": "active",
+    "successful_uses": 0,
+    "code_signature": "{\"classes\": [], \"code_length\": 2238, \"complexity\": 1, \"functions\": [\"execute_tool\"], \"imports\": [\"math\", \"operator\"]}",
+    "learning_data": {
+      "created_from_request": "Herramienta para: repara este código javascript por favor: function calcularTotal(precio, tasa) { var total = precio == 0 ? 0 : precio * tasa; document.getElementById('resultado').innerText = total; return total;",
+      "reuse_count": 0,
+      "adaptation_count": 0
+    }
+  },
+  "time_related_235051": {
+    "name": "time_related_235051",
+    "file_path": "D:\\escritorio\\vector5010 2026\\vectorapp\\herramientas\\time_related_235051.py",
+    "created_at": "2026-09-10T23:50:51.300492",
+    "description": "Herramienta para: hazme una función en javascript moderno ES6+ para formatear fechas en horario de Chile",
+    "status": "active",
+    "successful_uses": 0,
+    "code_signature": "{\"classes\": [], \"code_length\": 808, \"complexity\": 1, \"functions\": [\"execute_tool\"], \"imports\": [\"datetime\", \"calendar\"]}",
+    "learning_data": {
+      "created_from_request": "Herramienta para: hazme una función en javascript moderno ES6+ para formatear fechas en horario de Chile",
+      "reuse_count": 0,
+      "adaptation_count": 0
+    }
+  }
+}

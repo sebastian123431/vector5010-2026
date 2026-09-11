@@ -1,0 +1,40 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+.django-secret-key
+.vscode/
+
+# Downloaded inference binaries and model weights
+/bin/*.dll
+/bin/*.exe
+*.gguf
+*.weights
+
+# Local databases, conversations, photos and generated memory
+*.sqlite3
+*.sqlite3-*
+*.bak
+*.log
+/logs/
+/media/
+/semantic_network.json
+/semantic_network.pkl
+/vectorapp/data/
+/vectorapp/workspace/
+/vectorapp/herramientas/learning_patterns.json
+
+# Generated static files and operating system files
+/staticfiles/
+.DS_Store
+Thumbs.db

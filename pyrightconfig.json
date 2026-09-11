@@ -1,0 +1,11 @@
+{
+    "pythonPath": "C:\\Users\\seba5\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+    "include": [
+        "."
+    ],
+    "extraPaths": [
+        "."
+    ],
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false
+}

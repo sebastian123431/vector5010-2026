@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Vector 2026 // Estación Cognitiva J.A.R.V.I.S.{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 30px auto; padding: 20px;">
+    <div style="margin-bottom: 40px; text-align: center;">
+        <div style="display: inline-flex; align-items: center; gap: 10px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 6px 16px; border-radius: 20px; color: #38bdf8; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00f0ff; box-shadow: 0 0 8px #00f0ff;"></span>
+            Núcleo Soberano Activo
+        </div>
+        <h1 style="color: #f8fafc; font-size: 32px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px;">
+            Vector 2026 // Inteligencia Artificial Cognitiva
+        </h1>
+        <p style="color: #94a3b8; font-size: 16px; max-width: 680px; margin: 0 auto; line-height: 1.6;">
+            Arquitectura de autoaprendizaje neuronal, memoria episódica soberana, percepción computacional en tiempo real y diagnóstico autónomo de código.
+        </p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+        <div class="vector-card" style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 26px; backdrop-filter: blur(16px); transition: all 0.3s ease;">
+            <div style="font-size: 28px; margin-bottom: 14px;">🧠</div>
+            <h3 style="margin: 0 0 8px 0; color: #38bdf8; font-size: 18px;">Red Neuronal 3D & Diálogo</h3>
+            <p style="color: #94a3b8; font-size: 14px; line-height: 1.5; margin-bottom: 18px;">
+                Explora el mapa sináptico 2D/3D con visualización de activación de conceptos, pensamientos en vivo y diálogo con búsqueda web en DuckDuckGo.
+            </p>
+            <a href="{% url 'network-view' %}" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; box-shadow: 0 2px 10px rgba(2, 132, 199, 0.3);">
+                Iniciar Estación Neural →
+            </a>
+        </div>
+
+        <div class="vector-card" style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 26px; backdrop-filter: blur(16px); transition: all 0.3s ease;">
+            <div style="font-size: 28px; margin-bottom: 14px;">👁️</div>
+            <h3 style="margin: 0 0 8px 0; color: #10b981; font-size: 18px;">Visión Computacional J.A.R.V.I.S.</h3>
+            <p style="color: #94a3b8; font-size: 14px; line-height: 1.5; margin-bottom: 18px;">
+                Análisis sensorial fotográfico con detección de rostros (Haar Cascades), personas y objetos (YOLOv3) y memoria de identidad visual persistente.
+            </p>
+            <a href="{% url 'network-view' %}" onclick="sessionStorage.setItem('openVisionHUD', 'true')" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #059669, #047857); color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; box-shadow: 0 2px 10px rgba(5, 150, 105, 0.3);">
+                Abrir Ojo Óptico →
+            </a>
+        </div>
+
+        <div class="vector-card" style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 26px; backdrop-filter: blur(16px); transition: all 0.3s ease;">
+            <div style="font-size: 28px; margin-bottom: 14px;">📦</div>
+            <h3 style="margin: 0 0 8px 0; color: #a855f7; font-size: 18px;">Diagnóstico de Código (.ZIP)</h3>
+            <p style="color: #94a3b8; font-size: 14px; line-height: 1.5; margin-bottom: 18px;">
+                Ingesta completa de proyectos de software, mapa estructural de archivos, detección de bugs, seguridad y refactorizaciones autónomas asistidas.
+            </p>
+            <a href="{% url 'network-view' %}" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3);">
+                Diagnosticar Proyecto →
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

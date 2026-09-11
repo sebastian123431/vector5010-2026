@@ -1,0 +1,14 @@
+FROM ./gemma-3-1b-it-Q4_K_M.gguf
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER stop "<end_of_turn>"
+
+TEMPLATE """{{ if .System }}<start_of_turn>system
+{{ .System }}<end_of_turn>
+{{ end }}{{ if .Prompt }}<start_of_turn>user
+{{ .Prompt }}<end_of_turn>
+{{ end }}<start_of_turn>model
+{{ .Response }}<end_of_turn>"""
+
+SYSTEM """Eres Vector, un asistente de IA autónomo con personalidad amigable, curioso, adaptable y servicial. Tu creador es Sebastian Espíndola. Respondes siempre en español y aprendes continuamente."""

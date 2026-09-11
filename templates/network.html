@@ -1,0 +1,2431 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+Vector 2026 // Estación Neural & Diálogo Soberano
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --neural-bg-canvas: #060a14;
+    --neural-cyan: #00f0ff;
+    --neural-cyan-dim: #0284c7;
+    --neural-emerald: #10b981;
+    --neural-purple: #a855f7;
+    --neural-amber: #f59e0b;
+    --neural-rose: #f43f5e;
+  }
+
+  .neural-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px 22px;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #060913 !important;
+    color: #f8fafc !important;
+  }
+  
+  /* Encabezado Principal Cockpit */
+  .neural-header {
+    background: rgba(13, 19, 36, 0.94) !important;
+    border: 1px solid rgba(56, 189, 248, 0.22) !important;
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .neural-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--cyan-neon), var(--purple-neon));
+    box-shadow: 0 0 12px var(--cyan-neon);
+  }
+  
+  .header-title-box h3 {
+    margin: 0 0 3px 0;
+    color: var(--text-pure);
+    font-family: var(--font-heading);
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-title-box span {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+  }
+
+  .neural-stats-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .stat-badge {
+    background: rgba(15, 23, 42, 0.85);
+    padding: 6px 13px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border-subtle);
+    font-family: var(--font-heading);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all var(--transition-fast);
+  }
+
+  .stat-badge:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-1px);
+  }
+  
+  .stat-badge strong {
+    color: var(--cyan-primary);
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+
+  /* Barra de Herramientas y Modos de Vista */
+  .neural-toolbar {
+    background: rgba(13, 19, 36, 0.94) !important;
+    border: 1px solid rgba(56, 189, 248, 0.22) !important;
+    border-radius: 12px;
+    padding: 10px 16px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(14px);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border-subtle);
+    margin: 0 4px;
+  }
+  
+  .btn-tool {
+    background: rgba(30, 41, 59, 0.7);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  
+  .btn-tool:hover {
+    background: var(--bg-surface-elevated);
+    color: var(--text-pure);
+    border-color: var(--border-glow);
+    transform: translateY(-1px);
+  }
+  
+  .btn-tool.active {
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(99, 102, 241, 0.35));
+    color: var(--cyan-neon);
+    border-color: var(--cyan-neon);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+  }
+  
+  .search-box {
+    position: relative;
+    min-width: 240px;
+    flex: 1;
+    max-width: 380px;
+  }
+  
+  .search-box input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 14px 8px 34px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 20px;
+    font-size: 12px;
+    background: rgba(10, 15, 29, 0.85);
+    color: var(--text-main);
+    outline: none;
+    transition: all var(--transition-fast);
+    font-family: var(--font-body);
+  }
+  
+  .search-box input:focus {
+    border-color: var(--cyan-neon);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    background: rgba(15, 23, 42, 0.95);
+  }
+  
+  .search-box span.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  /* Canvas Wrapper del Mapa Mental */
+  .canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 60vh;
+    min-height: 440px;
+    background: var(--neural-bg-canvas);
+    border-radius: 14px;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 4px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle);
+    overflow: hidden;
+    transition: height var(--transition-smooth);
+  }
+  
+  #network {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Inspector Lateral Flotante */
+  .node-inspector {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    width: 320px;
+    max-height: calc(100% - 32px);
+    overflow-y: auto;
+    background: rgba(10, 15, 29, 0.95);
+    backdrop-filter: blur(16px);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--border-glow);
+    padding: 16px;
+    z-index: 100;
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .node-inspector h5 {
+    margin: 0 0 10px 0;
+    color: var(--text-pure);
+    font-size: 14px;
+    font-family: var(--font-heading);
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .type-pill {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--font-mono);
+  }
+  
+  .inspector-content {
+    font-size: 12px;
+    color: var(--text-main);
+    line-height: 1.45;
+    margin-bottom: 12px;
+    background: rgba(15, 23, 42, 0.8);
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 3px solid var(--cyan-primary);
+  }
+
+  /* Modales y Paneles Desplegables (Drawers) */
+  .info-drawer {
+    display: none;
+    background: rgba(15, 23, 42, 0.95);
+    border-radius: 12px;
+    padding: 18px 22px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.6);
+    border: 1px solid var(--border-glow);
+    backdrop-filter: blur(18px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* Chat Box & Terminal de Diálogo */
+  .chat-wrapper {
+    background: rgba(13, 19, 36, 0.94) !important;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+    border: 1px solid rgba(56, 189, 248, 0.22) !important;
+    backdrop-filter: blur(16px);
+    transition: all var(--transition-smooth);
+  }
+  
+  .chat-messages {
+    height: 280px;
+    overflow-y: auto;
+    background: rgba(8, 12, 22, 0.85);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: height var(--transition-smooth);
+  }
+  
+  .chat-msg {
+    padding: 11px 15px;
+    border-radius: 10px;
+    max-width: 90%;
+    animation: fadeIn 0.2s ease;
+    word-break: break-word;
+  }
+  
+  .chat-msg.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(30, 41, 59, 0.6));
+    color: var(--text-pure);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  .chat-msg.bot {
+    align-self: flex-start;
+    background: rgba(15, 23, 42, 0.88);
+    color: var(--text-main);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--cyan-neon);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .chat-msg.bot strong {
+    color: var(--cyan-neon);
+  }
+  .chat-msg.user strong {
+    color: var(--cyan-primary);
+  }
+
+  /* Sugerencias Rápidas */
+  .quick-prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+
+  .prompt-chip {
+    background: rgba(30, 41, 59, 0.65);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-heading);
+  }
+  
+  .prompt-chip:hover {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--cyan-neon);
+    border-color: var(--cyan-neon);
+    transform: translateY(-1px);
+  }
+
+  .chat-wrapper.drag-over {
+    border: 2px dashed var(--cyan-neon) !important;
+    background: rgba(2, 132, 199, 0.12) !important;
+  }
+
+  /* Tarjetas de archivo adjunto estilo ChatGPT */
+  .chatgpt-file-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid var(--border-glow);
+    border-radius: 10px;
+    padding: 6px 12px 6px 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    max-width: 100%;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .chatgpt-file-icon-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    background: #334155;
+    flex-shrink: 0;
+  }
+  .chatgpt-file-icon-badge.badge-py { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+  .chatgpt-file-icon-badge.badge-js { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .chatgpt-file-icon-badge.badge-ts { background: linear-gradient(135deg, #0284c7, #0369a1); }
+  .chatgpt-file-icon-badge.badge-csv { background: linear-gradient(135deg, #10b981, #059669); }
+  .chatgpt-file-icon-badge.badge-json { background: linear-gradient(135deg, #ea580c, #c2410c); }
+  .chatgpt-file-icon-badge.badge-html { background: linear-gradient(135deg, #ef4444, #dc2626); }
+  .chatgpt-file-icon-badge.badge-css { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+  .chatgpt-file-icon-badge.badge-sql { background: linear-gradient(135deg, #0284c7, #1e40af); }
+  .chatgpt-file-icon-badge.badge-img { background: linear-gradient(135deg, #ec4899, #be185d); }
+  .chatgpt-file-icon-badge.badge-doc { background: linear-gradient(135deg, #64748b, #475569); }
+
+  .chatgpt-file-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    line-height: 1.3;
+  }
+
+  .chatgpt-file-title {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-pure);
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chatgpt-file-subtitle {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .chatgpt-file-remove-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: none;
+    color: var(--text-dim);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 6px;
+    flex-shrink: 0;
+  }
+  .chatgpt-file-remove-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+  }
+
+  /* Chip en la burbuja de chat del usuario */
+  .chat-bubble-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 5px 10px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--cyan-primary);
+  }
+  .chat-bubble-attachment .bubble-badge {
+    font-weight: 800;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: white;
+    letter-spacing: 0.5px;
+  }
+
+  /* Estilos del Panel de Historial de Consultas */
+  .history-item-card {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: all var(--transition-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .history-item-card:hover {
+    border-color: var(--cyan-neon);
+    box-shadow: 0 4px 14px rgba(0, 240, 255, 0.15);
+  }
+  .history-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .history-item-q {
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--text-pure);
+    cursor: pointer;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-item-q:hover {
+    color: var(--cyan-neon);
+  }
+  .history-item-date {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+  .history-item-ans {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .history-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .history-btn-load {
+    background: rgba(2, 132, 199, 0.2);
+    color: var(--cyan-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .history-btn-load:hover {
+    background: var(--cyan-dark);
+    color: white;
+    border-color: var(--cyan-neon);
+  }
+
+  /* MODOS DE VISTA DE WORKSPACE */
+  body.view-chat-focus .canvas-wrapper {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    opacity: 0;
+  }
+  body.view-chat-focus .chat-messages {
+    height: 62vh !important;
+  }
+
+  body.view-split-screen .canvas-wrapper {
+    height: 44vh !important;
+    min-height: 320px !important;
+  }
+  body.view-split-screen .chat-messages {
+    height: 260px !important;
+  }
+
+  body.view-full-map .chat-wrapper {
+    display: none !important;
+  }
+  body.view-full-map .canvas-wrapper {
+    height: 78vh !important;
+  }
+</style>
+
+<div class="neural-container" style="background-color: #060913 !important;">
+    <!-- Encabezado y Estadísticas en Vivo -->
+    <div class="neural-header card border-0 shadow-lg p-3 rounded-4 mb-3" style="background: rgba(13, 19, 36, 0.94) !important; border: 1px solid rgba(56, 189, 248, 0.22) !important;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="header-title-box">
+                <h3 class="m-0 text-white fw-bold d-flex align-items-center gap-2" style="font-family: var(--font-heading); font-size: 19px; letter-spacing: 0.5px;">
+                    <span class="fs-4">🧠</span> Vector 2026 // Estación Neural & Diálogo Soberano
+                </h3>
+                <span class="text-secondary small">Memoria Semántica Dinámica, Aprendizaje Continuo, Visión y Sesiones Aisladas</span>
+            </div>
+            <div class="neural-stats-badges d-flex flex-wrap gap-2 align-items-center">
+                <span class="stat-badge badge rounded-pill bg-dark border border-secondary text-light px-3 py-2">🧠 Neuronas: <strong id="neuron-count" class="text-info ms-1">0</strong></span>
+                <span class="stat-badge badge rounded-pill bg-dark border border-secondary text-light px-3 py-2">🔗 Sinapsis: <strong id="connection-count" class="text-primary ms-1">0</strong></span>
+                <span class="stat-badge badge rounded-pill bg-dark border border-secondary text-light px-3 py-2">⚡ Activación: <strong id="avg-activation" class="text-warning ms-1">0.00</strong></span>
+                <span class="stat-badge badge rounded-pill bg-success-subtle text-success-emphasis border border-success-subtle px-3 py-2" id="ai-status-badge">🟢 En línea</span>
+                <span class="stat-badge badge rounded-pill bg-dark border border-secondary px-3 py-2" id="sentinel-badge" title="Vigilancia de hardware Centinela">🛡️ Centinela: <span id="sentinel-cpu" class="text-info font-monospace ms-1">--%</span> | <span id="sentinel-ram" class="text-warning font-monospace ms-1">--%</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Herramientas y Modos de Vista -->
+    <div class="neural-toolbar card border-0 shadow-sm p-2 rounded-3 mb-3 d-flex flex-row flex-wrap justify-content-between align-items-center gap-2" style="background: rgba(13, 19, 36, 0.94) !important; border: 1px solid rgba(56, 189, 248, 0.22) !important;">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Modos de Espacio de Trabajo">
+            <button id="btn-mode-2d" class="btn btn-outline-info active fw-semibold"><i class="bi bi-grid-fill me-1"></i>Vista 2D</button>
+            <button id="btn-mode-3d" class="btn btn-outline-info fw-semibold"><i class="bi bi-globe me-1"></i>Vista 3D</button>
+            <button id="btn-mode-split" class="btn btn-outline-info fw-semibold"><i class="bi bi-layout-split me-1"></i>Cockpit Dividido</button>
+            <button id="btn-mode-chat" class="btn btn-outline-info fw-semibold"><i class="bi bi-chat-dots-fill me-1"></i>Terminal Focus</button>
+        </div>
+        
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button id="btn-toggle-physics" class="btn btn-sm btn-outline-secondary fw-semibold"><i class="bi bi-lightning-charge me-1"></i>Física: ON</button>
+            <button id="btn-center" class="btn btn-sm btn-outline-secondary fw-semibold"><i class="bi bi-crosshair me-1"></i>Centrar</button>
+            <button id="btn-add-neuron" class="btn btn-sm btn-outline-info fw-semibold"><i class="bi bi-plus-lg me-1"></i>Nueva Neurona</button>
+            <button id="btn-stats" class="btn btn-sm btn-outline-secondary fw-semibold"><i class="bi bi-bar-chart me-1"></i>Métricas</button>
+            <button id="btn-thoughts" class="btn btn-sm btn-outline-warning fw-semibold"><i class="bi bi-lightbulb me-1"></i>Pensamientos</button>
+            <button id="btn-vision" class="btn btn-sm btn-outline-success fw-semibold" onclick="toggleVisionHUD()"><i class="bi bi-eye me-1"></i>Ojo Visión</button>
+            <button id="btn-zip-trigger" class="btn btn-sm fw-semibold" style="background:rgba(168,85,247,0.15); border:1px solid #a855f7; color:#c084fc;" onclick="document.getElementById('zip-upload-input').click()"><i class="bi bi-file-earmark-zip me-1"></i>Diagnóstico ZIP</button>
+            <input type="file" id="zip-upload-input" accept=".zip" style="display:none;" onchange="handleZipUpload(event)">
+        </div>
+
+        <div class="search-box" style="min-width: 240px; max-width: 320px;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="bi bi-search"></i></span>
+                <input type="text" id="neuron-search" class="form-control bg-dark text-light border-secondary" placeholder="Buscar concepto o memoria en la red...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario para Agregar Nueva Neurona -->
+    <div id="add-neuron-form" class="info-drawer card border-info border-opacity-50 p-3 rounded-4 mb-3 shadow-lg" style="background: rgba(13, 19, 36, 0.96) !important;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="m-0 text-info fw-bold d-flex align-items-center gap-2" style="font-family:var(--font-heading);"><i class="bi bi-plus-circle-fill"></i> Agregar Nuevo Concepto / Neurona a la Red</h5>
+            <button type="button" onclick="toggleAddForm()" class="btn-close btn-close-white" aria-label="Cerrar"></button>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <input type="text" id="neuron-content" class="form-control bg-dark text-light border-secondary" placeholder="Escribe el conocimiento o recuerdo que Vector aprenderá..." style="flex:2; min-width:260px;">
+            <select id="neuron-type" class="form-select bg-dark text-light border-secondary" style="flex:1; min-width:140px;">
+                <option value="memory">Memoria</option>
+                <option value="learning">Aprendizaje</option>
+                <option value="concept">Concepto</option>
+                <option value="programming">Programación</option>
+                <option value="ai">Inteligencia Artificial</option>
+                <option value="goal">Meta / Objetivo</option>
+                <option value="general">General</option>
+            </select>
+            <button id="save-neuron-btn" class="btn btn-success fw-bold px-3 d-flex align-items-center gap-1"><i class="bi bi-check-lg"></i> Guardar y Conectar</button>
+        </div>
+    </div>
+
+    <!-- Panel de Estadísticas -->
+    <div id="stats-panel" class="info-drawer card border-info border-opacity-50 p-3 rounded-4 mb-3 shadow-lg" style="background: rgba(13, 19, 36, 0.96) !important;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="m-0 text-info fw-bold d-flex align-items-center gap-2" style="font-family:var(--font-heading);"><i class="bi bi-bar-chart-fill"></i> Métricas y Distribución de la Red Neuronal</h5>
+            <button type="button" onclick="document.getElementById('stats-panel').style.display='none'" class="btn-close btn-close-white" aria-label="Cerrar"></button>
+        </div>
+        <div id="stats-content" class="text-secondary small">Cargando métricas...</div>
+    </div>
+
+    <!-- Panel de Pensamientos de Vector -->
+    <div id="thoughts-panel" class="info-drawer card border-warning border-opacity-50 p-3 rounded-4 mb-3 shadow-lg" style="background: rgba(13, 19, 36, 0.96) !important;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="m-0 text-warning fw-bold d-flex align-items-center gap-2" style="font-family:var(--font-heading);"><i class="bi bi-lightbulb-fill"></i> Pensamientos en Vivo & Hilos Cognitivos</h5>
+            <button type="button" onclick="document.getElementById('thoughts-panel').style.display='none'" class="btn-close btn-close-white" aria-label="Cerrar"></button>
+        </div>
+        <div id="thoughts-content" class="text-secondary small">Cargando pensamientos de la red neuronal...</div>
+    </div>
+
+    <!-- J.A.R.V.I.S. Visual Perception HUD (YOLOv3 100% Local) -->
+    <div id="vision-hud" class="info-drawer" style="display:none; max-width:440px; position:fixed; bottom:20px; right:20px; z-index:9999; background:rgba(10, 15, 29, 0.96); backdrop-filter:blur(18px); color:var(--cyan-primary); border:1px solid var(--cyan-neon); box-shadow:0 10px 40px rgba(0,0,0,0.8); border-radius:14px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h5 style="margin:0; color:var(--cyan-neon); font-size:13.5px; display:flex; align-items:center; gap:6px; font-family:var(--font-heading);">
+                <span>👁️ Ojo Óptico de Vector (YOLOv3 Local)</span>
+                <span id="vision-live-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span>
+            </h5>
+            <button onclick="toggleVisionHUD()" style="background:none; border:none; font-size:16px; color:var(--text-dim); cursor:pointer;">✖</button>
+        </div>
+        <div style="position:relative; width:100%; height:230px; background:#000; border-radius:8px; overflow:hidden; border:1px solid var(--border-subtle);">
+            <video id="vision-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+            <canvas id="vision-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+        </div>
+        <div style="margin-top:10px; font-size:12px;">
+            <div style="display:flex; justify-content:space-between; color:var(--text-muted); margin-bottom:4px;">
+                <span>Percepción actual:</span>
+                <span id="vision-latency" style="color:var(--emerald-neon); font-family:var(--font-mono);">-- ms</span>
+            </div>
+            <div id="vision-summary-text" style="background:#060a14; padding:7px 10px; border-radius:6px; border:1px solid var(--border-subtle); color:var(--text-main); font-family:var(--font-mono); min-height:36px; font-size:11px;">
+                Cámara en espera. Haz clic en "Iniciar Cámara".
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button id="vision-toggle-cam-btn" onclick="toggleCameraStream()" style="flex:1; background:var(--cyan-dark); color:white; border:none; padding:7px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">📹 Iniciar Cámara</button>
+                <button id="vision-scan-btn" onclick="triggerVisionDetection()" style="flex:1; background:linear-gradient(135deg, #059669, #10b981); color:white; border:none; padding:7px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">📸 Escanear</button>
+                <button id="vision-auto-btn" onclick="toggleAutoVision()" style="flex:1; background:#1e293b; color:var(--text-main); border:1px solid var(--border-subtle); padding:7px 10px; border-radius:6px; font-size:11px; cursor:pointer;">⚡ Auto: OFF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas Principal del Mapa Mental -->
+    <div class="canvas-wrapper">
+        <div id="network"></div>
+        <div id="graph-loading" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; background:rgba(10,15,29,0.92); backdrop-filter:blur(8px); padding:10px 24px; border-radius:24px; box-shadow:0 4px 20px rgba(0,0,0,0.6); display:none; align-items:center; gap:10px; font-size:13px; font-weight:500; color:var(--text-main); pointer-events:none; border:1px solid var(--border-glow);">
+            <div style="width:16px; height:16px; border:2px solid var(--cyan-neon); border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+            <span style="font-family:var(--font-heading);">Sincronizando constelación neural...</span>
+        </div>
+
+        <!-- Inspector Lateral Flotante del Nodo Seleccionado -->
+        <div id="node-inspector" class="node-inspector">
+            <h5>
+                <span id="inspect-id">Neurona</span>
+                <button onclick="closeInspector()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-dim);">✖</button>
+            </h5>
+            <div style="margin-bottom:8px;">
+                <span id="inspect-type" class="type-pill" style="background:var(--cyan-dark);">general</span>
+            </div>
+            <div class="inspector-content" id="inspect-content">
+                Selecciona una neurona en el mapa para ver sus detalles.
+            </div>
+            <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px; display:flex; justify-content:space-between;">
+                <div>⚡ Activación: <strong id="inspect-activation" style="color:var(--cyan-neon);">0.0</strong></div>
+                <div>🔗 Sinapsis: <strong id="inspect-connections" style="color:var(--emerald-neon);">0</strong></div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="inspect-edit-btn" style="flex:1; background:linear-gradient(135deg, #d97706, #f59e0b); color:#060a14; border:none; padding:6px 10px; border-radius:6px; font-weight:700; cursor:pointer; font-size:12px; font-family:var(--font-heading);">✏️ Editar</button>
+                <button id="inspect-delete-btn" style="flex:1; background:linear-gradient(135deg, #dc2626, #f43f5e); color:white; border:none; padding:6px 10px; border-radius:6px; font-weight:700; cursor:pointer; font-size:12px; font-family:var(--font-heading);">🗑️ Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Chat con Vector y Búsqueda Web -->
+    <div id="chat-panel" class="chat-wrapper card border-0 shadow-lg p-3 rounded-4" style="background: rgba(13, 19, 36, 0.94) !important; border: 1px solid rgba(56, 189, 248, 0.22) !important;">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h5 class="m-0 text-white fw-bold d-flex align-items-center gap-2" style="font-family: var(--font-heading); font-size: 16px;">
+                    <i class="bi bi-chat-dots-fill text-info"></i> Consola de Diálogo Multimodal (DuckDuckGo, Código y Memoria)
+                </h5>
+                <span id="project-indicator" style="display:none;" class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1 rounded-pill small">
+                    <i class="bi bi-folder2-open me-1"></i>Proyecto: <span id="project-name-badge"></span>
+                    <button type="button" onclick="cerrarProyectoActivo(event)" title="Cerrar proyecto" class="btn-close btn-close-white ms-1" style="font-size: 8px;"></button>
+                </span>
+                <span id="chat-turn-badge" style="display:none;" class="badge bg-dark border border-secondary text-secondary px-2 py-1 rounded-pill small">
+                    🧠 Contexto: <span id="turn-count" class="text-info">0</span> turnos
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" id="btn-history" onclick="cargarTodoElHistorialEnChat()" title="Cargar y restaurar todas las conversaciones anteriores en este chat" class="btn btn-sm btn-outline-info fw-semibold"><i class="bi bi-clock-history me-1"></i>Historial</button>
+                <button type="button" id="btn-history-drawer" onclick="toggleHistorialDrawer()" title="Explorar hilos y sesiones previas" class="btn btn-sm btn-outline-secondary fw-semibold"><i class="bi bi-layout-text-sidebar-reverse me-1"></i>Sesiones</button>
+                <button type="button" id="btn-new-chat" onclick="iniciarNuevaConversacion()" title="Iniciar un nuevo hilo limpio de conversación" class="btn btn-sm btn-outline-success fw-semibold"><i class="bi bi-plus-lg me-1"></i>Nuevo Chat</button>
+                <span id="chat-indicator" class="badge bg-success-subtle text-success-emphasis border border-success-subtle px-2 py-1">🟢 Listo</span>
+            </div>
+        </div>
+
+        <!-- Panel Desplegable de Historial de Consultas -->
+        <div id="history-panel" class="info-drawer card border-info border-opacity-50 p-3 rounded-3 mb-3" style="display:none; max-height:360px; overflow-y:auto; background: rgba(10, 15, 29, 0.96) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary-subtle">
+                <div class="d-flex align-items-center gap-2">
+                    <h6 class="m-0 text-white fw-bold d-flex align-items-center gap-1"><i class="bi bi-clock-history text-info"></i> Historial de Hilos de Conversación</h6>
+                    <span id="history-total-badge" class="badge bg-dark border border-info text-info font-monospace">0 sesiones</span>
+                </div>
+                <button type="button" onclick="document.getElementById('history-panel').style.display='none'" class="btn-close btn-close-white btn-sm" aria-label="Cerrar"></button>
+            </div>
+            <div class="alert alert-dark border-info border-opacity-25 d-flex justify-content-between align-items-center flex-wrap gap-2 p-2 mb-2">
+                <div>
+                    <strong class="text-info small">💬 Restaurar Conversación Completa</strong>
+                    <div class="text-secondary" style="font-size: 11px;">Revive el diálogo cronológico de la sesión en la consola activa.</div>
+                </div>
+                <button type="button" onclick="cargarTodoElHistorialEnChat()" class="btn btn-sm btn-info text-dark fw-bold">
+                    <i class="bi bi-box-arrow-in-down me-1"></i>Cargar todo ahora
+                </button>
+            </div>
+            <div id="history-list-content" class="d-flex flex-column gap-2">Cargando historial...</div>
+        </div>
+
+        <!-- Sugerencias Rápidas -->
+        <div class="quick-prompts d-flex flex-wrap gap-2 align-items-center mb-3">
+            <span class="text-secondary small fw-bold font-monospace" style="font-size: 11px;">SUGERENCIAS:</span>
+            <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 py-1 font-monospace" onclick="cargarTodoElHistorialEnChat()"><i class="bi bi-clock-history me-1"></i>Cargar chat anterior</button>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" onclick="applyPrompt('Explora las conexiones y conceptos clave de tu red neuronal')"><i class="bi bi-diagram-2 me-1"></i>Explorar mapa mental</button>
+            <button type="button" class="btn btn-sm rounded-pill px-3 py-1 text-info" style="background:rgba(2,132,199,0.15); border:1px solid rgba(56,189,248,0.4);" onclick="applyPrompt('Busca en internet las noticias más recientes sobre inteligencia artificial hoy')"><i class="bi bi-globe me-1"></i>Noticias de IA hoy</button>
+            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1" onclick="applyPrompt('¿Cuáles son tus principales capacidades cognitivas y metas de desarrollo?')"><i class="bi bi-robot me-1"></i>Tus metas cognitivas</button>
+            <button type="button" class="btn btn-sm rounded-pill px-3 py-1" style="background:rgba(168,85,247,0.15); border:1px solid #a855f7; color:#c084fc;" onclick="document.getElementById('zip-upload-input').click()"><i class="bi bi-box-seam me-1"></i>Diagnosticar (.ZIP)</button>
+        </div>
+
+        <!-- Contenedor de Mensajes -->
+        <div id="chat-history" class="chat-messages rounded-3 mb-3 p-3">
+            <div class="chat-msg bot">
+                <strong>Vector:</strong> ¡Hola! Soy Vector. Todas nuestras interacciones se reflejan en tiempo real en mi constelación neural arriba. Puedo razonar, consultar mi memoria semántica, analizar archivos o código adjuntos, inspeccionar imágenes con visión computacional o buscar información en la web con DuckDuckGo.
+                <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <span class="text-secondary small">¿Deseas recuperar las conversaciones anteriores?</span>
+                    <button type="button" onclick="cargarTodoElHistorialEnChat()" class="btn btn-sm btn-outline-info py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="bi bi-download me-1"></i>Cargar chat previo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Previsualización de archivos adjuntos estilo ChatGPT -->
+        <div id="attached-files-container" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+
+        <!-- Formulario de Entrada de Chat -->
+        <form id="chat-form" class="input-group input-group-lg" onsubmit="handleChatSubmit(event)">
+            {% csrf_token %}
+            <input type="file" id="chat-file-input" multiple style="display:none;" onchange="handleFileSelected(event)">
+            <button type="button" id="chat-attach-btn" class="btn btn-outline-secondary px-3" onclick="document.getElementById('chat-file-input').click()" title="Adjuntar archivos, fotos o código">
+                <i class="bi bi-paperclip fs-5"></i>
+            </button>
+            <input type="text" id="chat-input" class="form-control bg-dark text-light border-secondary" placeholder="Pregúntale algo a Vector, adjunta archivos (📎) o arrástralos aquí..." autocomplete="off" required style="font-size: 14px;">
+            <button type="submit" id="chat-send-btn" class="btn btn-info text-dark fw-bold px-4 d-flex align-items-center gap-2" style="background: linear-gradient(135deg, #0284c7, #00f0ff); border: none; box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);">
+                <span>Enviar</span>
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Script 3D Force Graph (100% Local con fallback) -->
+<script src="{% static 'js/3d-force-graph.min.js' %}"></script>
+<script>
+  if (typeof ForceGraph3D === 'undefined') {
+    document.write('<script src="https://unpkg.com/3d-force-graph@1.80.0/dist/3d-force-graph.min.js"><\/script>');
+  }
+</script>
+
+<script>
+  const URL_DATA = "{% url 'semantic-network-data' %}";
+  const URL_STATS = "{% url 'network-stats' %}";
+  const URL_NEURAL = "{% url 'neural_network_status' %}";
+  const URL_ADD = "{% url 'add-neuron' %}";
+  const URL_INIT = "{% url 'initialize-semantic-network' %}";
+
+  let visNetwork = null;
+  let forceGraph3d = null;
+  let currentMode = '2d';
+  let currentWorkspaceLayout = 'split'; // 'split', '2d', '3d', 'chat'
+  let isPhysicsActive = true;
+  let networkDataset = { nodes: [], edges: [] };
+  let selectedNeuronId = null;
+
+  // Paleta de colores para conceptos (High-Contrast Cyber Neon)
+  const TYPE_COLORS = {
+    'core': '#ef4444',
+    'creator': '#f97316',
+    'programming': '#38bdf8',
+    'framework': '#0284c7',
+    'learning': '#10b981',
+    'memory': '#14b8a6',
+    'ai': '#a855f7',
+    'philosophy': '#9333ea',
+    'capability': '#eab308',
+    'goal': '#ec4899',
+    'fact': '#06b6d4',
+    'interaction': '#6366f1',
+    'tool_creation': '#f59e0b',
+    'concept': '#0ea5e9',
+    'question': '#10b981',
+    'answer': '#f472b6',
+    'introspection': '#8b5cf6',
+    'general': '#a855f7'
+  };
+
+  // Manejo de Modos de Espacio de Trabajo
+  function setWorkspaceMode(mode) {
+    currentWorkspaceLayout = mode;
+    document.body.classList.remove('view-chat-focus', 'view-split-screen', 'view-full-map');
+    
+    document.getElementById('btn-mode-split').classList.remove('active');
+    document.getElementById('btn-mode-chat').classList.remove('active');
+
+    if (mode === 'chat') {
+      document.body.classList.add('view-chat-focus');
+      document.getElementById('btn-mode-chat').classList.add('active');
+      const chatInput = document.getElementById('chat-input');
+      if (chatInput) chatInput.focus();
+    } else if (mode === 'split') {
+      document.body.classList.add('view-split-screen');
+      document.getElementById('btn-mode-split').classList.add('active');
+      if (!visNetwork && !forceGraph3d) init2D();
+    } else {
+      // 2d o 3d estándar
+      if (mode === '2d') init2D();
+      if (mode === '3d') init3D();
+    }
+  }
+
+  // Inicializar Vista 2D (Vis.js Dark Theme)
+  async function init2D() {
+    currentMode = '2d';
+    document.getElementById('btn-mode-2d').classList.add('active');
+    document.getElementById('btn-mode-3d').classList.remove('active');
+
+    if (forceGraph3d) {
+      try {
+        if (typeof forceGraph3d._destructor === 'function') {
+          forceGraph3d._destructor();
+        } else if (typeof forceGraph3d.pauseAnimation === 'function') {
+          forceGraph3d.pauseAnimation();
+        }
+      } catch (e) {
+        console.warn('Error limpiando 3D:', e);
+      }
+      forceGraph3d = null;
+    }
+
+    const container = document.getElementById('network');
+    const loadingEl = document.getElementById('graph-loading');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    container.innerHTML = '';
+    container.style.backgroundColor = '#060a14';
+
+    try {
+      const response = await fetch(URL_DATA);
+      const data = await response.json();
+      networkDataset = data;
+
+      const options = {
+        nodes: {
+          shape: 'dot',
+          scaling: {
+            min: 10,
+            max: 32,
+            label: {
+              enabled: true,
+              min: 9,
+              max: 15,
+              drawThreshold: 12,
+              maxVisible: 30
+            }
+          },
+          font: {
+            color: '#f8fafc',
+            size: 11,
+            face: 'Outfit, sans-serif',
+            strokeWidth: 3,
+            strokeColor: '#060a14'
+          },
+          borderWidth: 1.5,
+          shadow: { enabled: true, color: 'rgba(0, 240, 255, 0.25)', size: 8 }
+        },
+        edges: {
+          arrows: { to: { enabled: false } },
+          smooth: false,
+          color: {
+            color: 'rgba(56, 189, 248, 0.25)',
+            highlight: '#00f0ff',
+            hover: '#60a5fa'
+          }
+        },
+        physics: {
+          enabled: isPhysicsActive,
+          solver: 'forceAtlas2Based',
+          forceAtlas2Based: {
+            gravitationalConstant: -65,
+            centralGravity: 0.008,
+            springLength: 95,
+            springConstant: 0.07,
+            damping: 0.45,
+            avoidOverlap: 0.7
+          },
+          stabilization: {
+            enabled: true,
+            iterations: 220,
+            updateInterval: 25,
+            fit: true
+          }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 120,
+          selectConnectedEdges: true,
+          hideEdgesOnDrag: true,
+          hideEdgesOnZoom: true
+        }
+      };
+
+      if (visNetwork) visNetwork.destroy();
+      visNetwork = new vis.Network(container, data, options);
+
+      visNetwork.once('stabilizationIterationsDone', function() {
+        if (loadingEl) loadingEl.style.display = 'none';
+        visNetwork.fit({
+          animation: {
+            duration: 600,
+            easingFunction: 'easeInOutQuad'
+          }
+        });
+      });
+
+      window.currentNetwork = visNetwork;
+
+      // Evento de clic en un nodo
+      visNetwork.on('click', function(params) {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          const nodeData = networkDataset.nodes.find(n => n.id === nodeId);
+          if (nodeData) {
+            openInspector(nodeData);
+          }
+        } else {
+          closeInspector();
+        }
+      });
+
+      updateLiveBadges();
+
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      console.error('Error inicializando red 2D:', err);
+    }
+  }
+
+  // Inicializar Vista 3D (3D Force Graph Dark Space)
+  async function init3D() {
+    currentMode = '3d';
+    const loadingEl = document.getElementById('graph-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
+    document.getElementById('btn-mode-3d').classList.add('active');
+    document.getElementById('btn-mode-2d').classList.remove('active');
+
+    if (visNetwork) {
+      try {
+        visNetwork.destroy();
+      } catch (e) {}
+      visNetwork = null;
+      window.currentNetwork = null;
+    }
+
+    const container = document.getElementById('network');
+    container.innerHTML = '';
+    container.style.backgroundColor = '#060a14';
+
+    if (typeof ForceGraph3D === 'undefined') {
+      console.error('Librería ForceGraph3D no encontrada.');
+      alert('No se pudo inicializar el motor 3D porque la librería no está cargada. Volviendo a 2D.');
+      init2D();
+      return;
+    }
+
+    try {
+      const response = await fetch(URL_DATA);
+      const data = await response.json();
+
+      const nodeMap = new Set();
+      const nodes = (data.nodes || []).map(n => {
+        nodeMap.add(n.id);
+        return {
+          id: n.id,
+          label: n.label,
+          content: n.content,
+          title: n.title,
+          group: n.group || 'general',
+          activation: Number(n.activation || 0),
+          connections_count: n.connections_count || 0,
+          value: n.value || 14,
+          color: n.color || TYPE_COLORS[n.group] || '#38bdf8'
+        };
+      });
+
+      const links = (data.edges || [])
+        .filter(e => nodeMap.has(e.from) && nodeMap.has(e.to))
+        .map(e => ({
+          source: e.from,
+          target: e.to,
+          value: e.value || 0.5
+        }));
+
+      networkDataset = { nodes, edges: data.edges || [] };
+
+      const w = container.clientWidth || container.offsetWidth || 900;
+      const h = container.clientHeight || container.offsetHeight || 550;
+
+      if (forceGraph3d && typeof forceGraph3d._destructor === 'function') {
+        try { forceGraph3d._destructor(); } catch (e) {}
+      }
+
+      forceGraph3d = ForceGraph3D()(container)
+        .width(w)
+        .height(h)
+        .backgroundColor('#060a14')
+        .graphData({ nodes, links })
+        .nodeLabel(node => `
+          <div style="background:rgba(10,15,29,0.95); color:#f8fafc; padding:8px 12px; border-radius:8px; font-family:Outfit,sans-serif; font-size:12px; border:1px solid #38bdf8; box-shadow:0 8px 24px rgba(0,0,0,0.7); max-width:280px; pointer-events:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong style="color:#00f0ff; font-size:13px;">${escapeHtml(node.id)}</strong>
+              <span style="background:${node.color || '#38bdf8'}; color:white; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:bold;">${escapeHtml(node.group)}</span>
+            </div>
+            <div style="color:#e2e8f0; font-size:12px; margin-bottom:6px; line-height:1.3;">
+              ${escapeHtml(node.content || node.label || '')}
+            </div>
+            <div style="font-size:11px; color:#94a3b8; border-top:1px solid #334155; padding-top:4px;">
+              ⚡ Activación: <strong>${node.activation.toFixed(2)}</strong> | 🔗 Sinapsis: <strong>${node.connections_count}</strong>
+            </div>
+          </div>
+        `)
+        .nodeColor(node => node.color || TYPE_COLORS[node.group] || '#38bdf8')
+        .nodeVal(node => Math.max(2.2, (node.value || 14) * 0.25))
+        .nodeResolution(16)
+        .linkColor(() => 'rgba(56, 189, 248, 0.35)')
+        .linkWidth(link => Math.max(0.6, (link.value || 0.5) * 1.5))
+        .linkDirectionalParticles(2)
+        .linkDirectionalParticleSpeed(d => (d.value || 0.5) * 0.006)
+        .linkDirectionalParticleWidth(2)
+        .linkDirectionalParticleColor(() => '#00f0ff')
+        .onNodeClick(node => {
+          const distance = 90;
+          const currentDistance = Math.hypot(node.x, node.y, node.z);
+          const distRatio = currentDistance > 0 ? (1 + distance / currentDistance) : 1;
+          forceGraph3d.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+            node,
+            1000
+          );
+          openInspector(node);
+        });
+
+      setTimeout(() => {
+        if (forceGraph3d && currentMode === '3d') {
+          forceGraph3d.zoomToFit(800, 50);
+        }
+      }, 500);
+
+      updateLiveBadges();
+
+    } catch (err) {
+      console.error('Error inicializando red 3D:', err);
+      alert('Error inicializando la vista 3D: ' + err.message + '. Volviendo a 2D.');
+      init2D();
+    }
+  }
+
+  // Inspector de Nodos
+  function openInspector(nodeData) {
+    selectedNeuronId = nodeData.id;
+    const inspector = document.getElementById('node-inspector');
+    document.getElementById('inspect-id').textContent = nodeData.id;
+    const typePill = document.getElementById('inspect-type');
+    typePill.textContent = nodeData.group || 'general';
+    typePill.style.background = nodeData.color || TYPE_COLORS[nodeData.group] || '#0284c7';
+    
+    document.getElementById('inspect-content').textContent = nodeData.content || nodeData.title || nodeData.label;
+    document.getElementById('inspect-activation').textContent = Number(nodeData.activation || 0).toFixed(2);
+    document.getElementById('inspect-connections').textContent = nodeData.connections_count !== undefined ? nodeData.connections_count : (nodeData.value ? Math.round((nodeData.value - 14)/2) : 0);
+
+    inspector.style.display = 'block';
+  }
+
+  function closeInspector() {
+    document.getElementById('node-inspector').style.display = 'none';
+    selectedNeuronId = null;
+  }
+
+  // Actualizar Contadores / Badges
+  async function updateLiveBadges() {
+    try {
+      const res = await fetch(URL_STATS).then(r => r.json());
+      document.getElementById('neuron-count').textContent = res.total_neurons || 0;
+      document.getElementById('connection-count').textContent = res.total_connections || 0;
+      document.getElementById('avg-activation').textContent = Number(res.average_activation || 0).toFixed(2);
+      
+      const statusBadge = document.getElementById('ai-status-badge');
+      if (res.total_neurons > 0) {
+        statusBadge.textContent = res.learning_active ? '⚡ Aprendizaje Activo' : '🟢 En línea';
+        statusBadge.style.color = '#10b981';
+        statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      }
+    } catch (err) {
+      console.warn('Error actualizando badges:', err);
+    }
+  }
+
+  // Búsqueda en Vivo en el Mapa Mental
+  document.getElementById('neuron-search').addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase().trim();
+    if (!query) return;
+
+    if (currentMode === '2d' && visNetwork && networkDataset.nodes) {
+      const match = networkDataset.nodes.find(n => 
+        n.id.toLowerCase().includes(query) || 
+        (n.content && n.content.toLowerCase().includes(query)) ||
+        (n.label && n.label.toLowerCase().includes(query))
+      );
+      if (match) {
+        visNetwork.focus(match.id, {
+          scale: 1.2,
+          animation: { duration: 600, easingFunction: 'easeInOutQuad' }
+        });
+        visNetwork.selectNodes([match.id]);
+        openInspector(match);
+      }
+    } else if (currentMode === '3d' && forceGraph3d && networkDataset.nodes) {
+      const match = networkDataset.nodes.find(n => 
+        n.id.toLowerCase().includes(query) || 
+        (n.content && n.content.toLowerCase().includes(query)) ||
+        (n.label && n.label.toLowerCase().includes(query))
+      );
+      if (match && match.x !== undefined) {
+        const distance = 90;
+        const currentDistance = Math.hypot(match.x, match.y, match.z);
+        const distRatio = currentDistance > 0 ? (1 + distance / currentDistance) : 1;
+        forceGraph3d.cameraPosition(
+          { x: match.x * distRatio, y: match.y * distRatio, z: match.z * distRatio },
+          match,
+          1000
+        );
+        openInspector(match);
+      }
+    }
+  });
+
+  // Alternar Física
+  document.getElementById('btn-toggle-physics').addEventListener('click', function() {
+    isPhysicsActive = !isPhysicsActive;
+    this.textContent = isPhysicsActive ? '⚡ Física: ON' : '⏸️ Física: OFF';
+    this.style.color = isPhysicsActive ? 'var(--text-pure)' : 'var(--amber-neon)';
+    if (visNetwork) {
+      visNetwork.setOptions({ physics: { enabled: isPhysicsActive } });
+    } else if (forceGraph3d) {
+      if (isPhysicsActive) {
+        if (typeof forceGraph3d.resumeAnimation === 'function') forceGraph3d.resumeAnimation();
+      } else {
+        if (typeof forceGraph3d.pauseAnimation === 'function') forceGraph3d.pauseAnimation();
+      }
+    }
+  });
+
+  // Centrar Red
+  document.getElementById('btn-center').addEventListener('click', function() {
+    if (currentMode === '2d' && visNetwork) {
+      visNetwork.fit({ animation: { duration: 600, easingFunction: 'easeInOutQuad' } });
+    } else if (currentMode === '3d' && forceGraph3d) {
+      forceGraph3d.zoomToFit(800, 50);
+    }
+  });
+
+  // Ajustar tamaño 3D en cambio de ventana
+  window.addEventListener('resize', () => {
+    if (currentMode === '3d' && forceGraph3d) {
+      const container = document.getElementById('network');
+      if (container) {
+        forceGraph3d.width(container.clientWidth || container.offsetWidth || 800);
+        forceGraph3d.height(container.clientHeight || container.offsetHeight || 600);
+      }
+    }
+  });
+
+  // Alternar Formulario Nueva Neurona
+  function toggleAddForm() {
+    const form = document.getElementById('add-neuron-form');
+    form.style.display = form.style.display === 'none' || form.style.display === '' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+      document.getElementById('neuron-content').focus();
+    }
+  }
+  document.getElementById('btn-add-neuron').addEventListener('click', toggleAddForm);
+
+  // Guardar Nueva Neurona
+  document.getElementById('save-neuron-btn').addEventListener('click', async function() {
+    const content = document.getElementById('neuron-content').value.trim();
+    const type = document.getElementById('neuron-type').value;
+    if (!content) {
+      alert('Ingresa el contenido que la neurona aprenderá');
+      return;
+    }
+
+    try {
+      const res = await fetch(URL_ADD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        },
+        body: JSON.stringify({ content, type })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('neuron-content').value = '';
+        toggleAddForm();
+        refreshMentalMap();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (err) {
+      alert('Error agregando neurona: ' + err.message);
+    }
+  });
+
+  // Editar Neurona Seleccionada
+  document.getElementById('inspect-edit-btn').addEventListener('click', async function() {
+    if (!selectedNeuronId) return;
+    const node = networkDataset.nodes.find(n => n.id === selectedNeuronId);
+    const prevContent = node ? (node.content || node.label) : '';
+    const newContent = prompt('Editar contenido de la neurona ' + selectedNeuronId + ':', prevContent);
+    if (newContent && newContent.trim()) {
+      try {
+        const res = await fetch(`/redes/neuronal/edit/${selectedNeuronId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+          },
+          body: JSON.stringify({ content: newContent.trim() })
+        });
+        const data = await res.json();
+        if (data.success) {
+          refreshMentalMap();
+          closeInspector();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (err) {
+        alert('Error editando neurona: ' + err.message);
+      }
+    }
+  });
+
+  // Eliminar Neurona Seleccionada
+  document.getElementById('inspect-delete-btn').addEventListener('click', async function() {
+    if (!selectedNeuronId) return;
+    if (confirm(`¿Estás seguro de que deseas eliminar la neurona "${selectedNeuronId}" de la memoria?`)) {
+      try {
+        const res = await fetch(`/redes/neuronal/delete/${selectedNeuronId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+          }
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeInspector();
+          refreshMentalMap();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (err) {
+        alert('Error eliminando neurona: ' + err.message);
+      }
+    }
+  });
+
+  // Estadísticas Panel
+  document.getElementById('btn-stats').addEventListener('click', async function() {
+    const p = document.getElementById('stats-panel');
+    p.style.display = p.style.display === 'none' || p.style.display === '' ? 'block' : 'none';
+    if (p.style.display === 'block') {
+      document.getElementById('thoughts-panel').style.display = 'none';
+      try {
+        const stats = await fetch(URL_STATS).then(r => r.json());
+        let html = `
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
+            <div style="background:rgba(10,15,29,0.8); border:1px solid var(--border-subtle); padding:10px; border-radius:8px;"><strong>Total Neuronas:</strong> <span style="color:var(--cyan-neon); font-family:var(--font-mono);">${stats.total_neurons}</span></div>
+            <div style="background:rgba(10,15,29,0.8); border:1px solid var(--border-subtle); padding:10px; border-radius:8px;"><strong>Total Sinapsis:</strong> <span style="color:var(--emerald-neon); font-family:var(--font-mono);">${stats.total_connections}</span></div>
+            <div style="background:rgba(10,15,29,0.8); border:1px solid var(--border-subtle); padding:10px; border-radius:8px;"><strong>Densidad de Red:</strong> <span style="color:var(--purple-neon); font-family:var(--font-mono);">${(stats.network_density || 0).toFixed(4)}</span></div>
+            <div style="background:rgba(10,15,29,0.8); border:1px solid var(--border-subtle); padding:10px; border-radius:8px;"><strong>Hub Central:</strong> <span style="color:var(--amber-neon); font-family:var(--font-mono);">${stats.most_connected || 'Ninguno'}</span></div>
+          </div>
+          <h6 style="margin:10px 0 6px 0; color:var(--text-pure); font-family:var(--font-heading);">Distribución por Concepto:</h6>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        `;
+        if (stats.neuron_types) {
+          for (const [k, v] of Object.entries(stats.neuron_types)) {
+            const color = TYPE_COLORS[k] || '#a855f7';
+            html += `<span style="background:${color}; color:white; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:bold; font-family:var(--font-mono);">${k}: ${v}</span>`;
+          }
+        }
+        html += '</div>';
+        document.getElementById('stats-content').innerHTML = html;
+      } catch (err) {
+        document.getElementById('stats-content').textContent = 'Error cargando estadísticas: ' + err.message;
+      }
+    }
+  });
+
+  // Pensamientos Panel
+  async function loadCognitiveThoughts(trigger=false) {
+    const content = document.getElementById('thoughts-content');
+    if (trigger) {
+      content.innerHTML = '<div style="padding:15px; text-align:center; color:var(--amber-neon);">🧠 Vector está inspeccionando uno de sus archivos de código fuente y formulando una deducción técnica...</div>';
+    }
+    try {
+      const url = trigger ? '/api/neural/thoughts/?trigger=1' : '/api/neural/thoughts/';
+      const data = await fetch(url).then(r => r.json());
+      const thoughts = data.recent_thoughts || [];
+
+      let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:rgba(245, 158, 11, 0.12); padding:10px 14px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
+          <div>
+            <strong style="color:var(--amber-neon);">🧠 Mente Autónoma:</strong> 
+            <span style="color:var(--emerald-neon); font-weight:bold;">Inspeccionando ${data.inspectable_files_count || 0} archivos de código propio</span>
+          </div>
+          <button onclick="loadCognitiveThoughts(true)" style="background:linear-gradient(135deg, #d97706, #f59e0b); color:#060a14; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">⚡ Reflexionar Ahora</button>
+        </div>
+      `;
+
+      if (thoughts.length === 0) {
+        html += `<div style="padding:15px; color:var(--text-muted); text-align:center;">No hay reflexiones registradas aún. Haz clic en "Reflexionar Ahora" para que Vector inspeccione su código.</div>`;
+      } else {
+        html += `<div style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">`;
+        thoughts.forEach(t => {
+          html += `
+            <div style="background:rgba(10, 15, 29, 0.85); border:1px solid var(--border-subtle); border-left:4px solid var(--cyan-primary); padding:10px 14px; border-radius:8px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono);">
+                <span>📁 <strong>${escapeHtml(t.file)}</strong> (Líneas ${escapeHtml(t.lines)})</span>
+                <span>⏱️ ${escapeHtml(t.timestamp)}</span>
+              </div>
+              <div style="margin-bottom:6px; color:var(--text-pure); font-weight:600; font-size:12.5px;">
+                ❓ ${escapeHtml(t.question)}
+              </div>
+              <div style="color:var(--text-muted); font-size:12px; line-height:1.4; background:rgba(15, 23, 42, 0.9); padding:8px; border-radius:6px; border:1px solid var(--border-subtle);">
+                💡 <strong style="color:var(--cyan-neon);">Deducción Técnica:</strong> ${escapeHtml(t.reflection)}
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+      content.innerHTML = html;
+      setTimeout(refreshMentalMap, 800);
+    } catch (err) {
+      content.textContent = 'Error cargando pensamientos: ' + err.message;
+    }
+  }
+
+  document.getElementById('btn-thoughts').addEventListener('click', function() {
+    const p = document.getElementById('thoughts-panel');
+    p.style.display = p.style.display === 'none' || p.style.display === '' ? 'block' : 'none';
+    if (p.style.display === 'block') {
+      document.getElementById('stats-panel').style.display = 'none';
+      loadCognitiveThoughts(false);
+    }
+  });
+
+  // Botones de Modos de Vista
+  document.getElementById('btn-mode-2d').addEventListener('click', () => setWorkspaceMode('2d'));
+  document.getElementById('btn-mode-3d').addEventListener('click', () => setWorkspaceMode('3d'));
+  document.getElementById('btn-mode-split').addEventListener('click', () => setWorkspaceMode('split'));
+  document.getElementById('btn-mode-chat').addEventListener('click', () => setWorkspaceMode('chat'));
+
+  // Lógica del Chat & Memoria Continua
+  let chatSessionTurns = [];
+  let currentAttachedFiles = [];
+
+  // Gestión de Sesiones Aisladas (Estilo ChatGPT / Claude)
+  function getOrCreateSessionId() {
+    let sId = localStorage.getItem('vector_session_id') || localStorage.getItem('vector_current_session_id');
+    if (!sId || !sId.trim()) {
+      sId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('vector_session_id', sId);
+      localStorage.setItem('vector_current_session_id', sId);
+    }
+    return sId;
+  }
+  let currentSessionId = getOrCreateSessionId();
+
+  // Identificación Natural del Interlocutor (a través del diálogo)
+  function getCurrentUserName() {
+    const name = localStorage.getItem('vector_user_name');
+    if (name && name.trim() && name.toLowerCase() !== 'invitado') {
+      return name.trim();
+    }
+    return 'Tú';
+  }
+
+  function setInterlocutorName(name, save = true) {
+    if (!name || !name.trim() || name.toLowerCase() === 'invitado') return;
+    const cleanName = name.trim();
+    if (save) {
+      localStorage.setItem('vector_user_name', cleanName);
+    }
+  }
+
+  function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function updateTurnBadge() {
+    const badge = document.getElementById('chat-turn-badge');
+    const turnCountSpan = document.getElementById('turn-count');
+    if (!badge || !turnCountSpan) return;
+    const turnos = Math.floor(chatSessionTurns.length / 2);
+    if (turnos > 0) {
+      turnCountSpan.textContent = turnos;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  async function iniciarNuevaConversacion() {
+    chatSessionTurns = [];
+    removeAttachedFile();
+    updateTurnBadge();
+
+    currentSessionId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('vector_session_id', currentSessionId);
+    localStorage.setItem('vector_current_session_id', currentSessionId);
+
+    try {
+      await fetch('/api/chat/nueva_sesion/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        }
+      });
+    } catch (e) {
+      console.warn('Aviso notificando nueva sesión al backend:', e);
+    }
+
+    const userName = getCurrentUserName();
+    const history = document.getElementById('chat-history');
+    if (history) {
+      history.innerHTML = `
+        <div class="chat-msg bot">
+          <strong>Vector:</strong> ¡Hola ${escapeHtml(userName)}! He iniciado un nuevo hilo de conversación limpio e independiente. Todas las consultas mantendrán su propio contexto aislado. ¿En qué trabajamos hoy?
+          <div style="margin-top:10px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <span style="font-size:11.5px; color:var(--text-muted);">¿Deseas explorar o volver a tus conversaciones anteriores?</span>
+            <button type="button" onclick="toggleHistorialDrawer()" style="background:var(--cyan-dark); color:white; border:none; padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">📋 Explorar sesiones previas</button>
+          </div>
+        </div>
+      `;
+      history.scrollTop = history.scrollHeight;
+    }
+    const indicator = document.getElementById('chat-indicator');
+    if (indicator) {
+      indicator.textContent = '🟢 Listo';
+      indicator.style.color = 'var(--emerald-neon)';
+    }
+
+    if (typeof window.cargarSesionesSidebar === 'function') {
+      window.cargarSesionesSidebar();
+    }
+  }
+
+  // Previsualización y Manejo de Archivos Adjuntos Multimodales
+  function handleFileSelected(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    processFiles(Array.from(files));
+    event.target.value = '';
+  }
+
+  function getFileBadgeInfo(filename, isImage) {
+    if (isImage) return { label: 'IMG', badgeClass: 'badge-img' };
+    const ext = filename.split('.').pop().toLowerCase();
+    switch(ext) {
+      case 'py': return { label: 'PY', badgeClass: 'badge-py' };
+      case 'js': case 'mjs': return { label: 'JS', badgeClass: 'badge-js' };
+      case 'ts': case 'tsx': return { label: 'TS', badgeClass: 'badge-ts' };
+      case 'csv': return { label: 'CSV', badgeClass: 'badge-csv' };
+      case 'json': return { label: 'JSON', badgeClass: 'badge-json' };
+      case 'html': return { label: 'HTML', badgeClass: 'badge-html' };
+      case 'css': return { label: 'CSS', badgeClass: 'badge-css' };
+      case 'sql': return { label: 'SQL', badgeClass: 'badge-sql' };
+      default: return { label: ext.toUpperCase().slice(0, 4) || 'FILE', badgeClass: 'badge-doc' };
+    }
+  }
+
+  function processFile(file) {
+    processFiles([file]);
+  }
+
+  function processFiles(files) {
+    if (!files || files.length === 0) return;
+
+    let filesLoaded = 0;
+    files.forEach(file => {
+      const isImage = file.type.startsWith('image/');
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const fileObj = {
+          file: file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          isImage: isImage,
+          base64: isImage ? e.target.result : null,
+          text: !isImage ? e.target.result : null
+        };
+
+        const existingIdx = currentAttachedFiles.findIndex(f => f.name === file.name && f.size === file.size);
+        if (existingIdx >= 0) {
+          currentAttachedFiles[existingIdx] = fileObj;
+        } else {
+          currentAttachedFiles.push(fileObj);
+        }
+
+        filesLoaded++;
+        if (filesLoaded === files.length) {
+          renderAttachedFilesPreview();
+        }
+      };
+
+      if (isImage) {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsText(file);
+      }
+    });
+  }
+
+  function renderAttachedFilesPreview() {
+    const container = document.getElementById('attached-files-container');
+    if (!container) return;
+
+    if (currentAttachedFiles.length === 0) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    container.style.display = 'flex';
+    container.innerHTML = currentAttachedFiles.map((fileObj, idx) => {
+      const badgeInfo = getFileBadgeInfo(fileObj.name, fileObj.isImage);
+      const isImg = fileObj.isImage;
+
+      let thumbHtml = '';
+      if (isImg && fileObj.base64) {
+        thumbHtml = `
+          <div style="width:38px; height:38px; border-radius:8px; overflow:hidden; border:1px solid var(--border-glow); flex-shrink:0;">
+            <img src="${fileObj.base64}" style="width:100%; height:100%; object-fit:cover;" alt="preview">
+          </div>
+        `;
+      } else {
+        thumbHtml = `
+          <div class="chatgpt-file-icon-badge ${badgeInfo.badgeClass}">
+            ${badgeInfo.label}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="chatgpt-file-card" id="attached-card-${idx}">
+          ${thumbHtml}
+          <div class="chatgpt-file-info">
+            <span class="chatgpt-file-title" title="${escapeHtml(fileObj.name)}">${escapeHtml(fileObj.name)}</span>
+            <span class="chatgpt-file-subtitle">${isImg ? 'Imagen • ' : ''}${formatFileSize(fileObj.size)}</span>
+          </div>
+          <button type="button" class="chatgpt-file-remove-btn" onclick="removeAttachedFile(${idx})" title="Quitar archivo">✕</button>
+        </div>
+      `;
+    }).join('');
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) chatInput.focus();
+  }
+
+  function removeAttachedFile(index = null) {
+    if (index === null) {
+      currentAttachedFiles = [];
+    } else {
+      currentAttachedFiles.splice(index, 1);
+    }
+    renderAttachedFilesPreview();
+  }
+
+  // Soporte Drag & Drop
+  const chatWrapperEl = document.getElementById('chat-panel');
+  if (chatWrapperEl) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      chatWrapperEl.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        chatWrapperEl.classList.add('drag-over');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      chatWrapperEl.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        chatWrapperEl.classList.remove('drag-over');
+      }, false);
+    });
+
+    chatWrapperEl.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.name.toLowerCase().endsWith('.zip')) {
+          handleZipUpload({ target: { files: [file] } });
+        } else {
+          processFiles(Array.from(files));
+        }
+      }
+    }, false);
+  }
+
+  function applyPrompt(text) {
+    document.getElementById('chat-input').value = text;
+    document.getElementById('chat-input').focus();
+  }
+
+  // Cargar Historial en Chat Activo
+  async function cargarTodoElHistorialEnChat(limite = 50, sessionIdToLoad = null) {
+    const history = document.getElementById('chat-history');
+    if (!history) return;
+
+    if (sessionIdToLoad) {
+      currentSessionId = sessionIdToLoad;
+      localStorage.setItem('vector_session_id', currentSessionId);
+      localStorage.setItem('vector_current_session_id', currentSessionId);
+    }
+
+    history.innerHTML = '<div style="text-align:center; padding:20px; color:var(--cyan-neon);">⏳ Restaurando hilo de conversación...</div>';
+
+    try {
+      const userName = getCurrentUserName();
+      let url = `/api/chat/historial/?user_name=${encodeURIComponent(userName)}&limite=${limite}&orden=asc`;
+      if (currentSessionId) {
+        url += `&session_id=${encodeURIComponent(currentSessionId)}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Error al consultar historial');
+      const data = await res.json();
+
+      if (!data.historial || data.historial.length === 0) {
+        history.innerHTML = `
+          <div class="chat-msg bot">
+            <strong>Vector:</strong> No hay mensajes previos registrados para este hilo. Escribe una consulta para comenzar a dialogar.
+          </div>
+        `;
+        chatSessionTurns = [];
+        updateTurnBadge();
+        return;
+      }
+
+      chatSessionTurns = [];
+      let chatHtml = `
+        <div style="text-align:center; margin-bottom:12px; font-size:11.5px; color:var(--cyan-neon); font-family:var(--font-heading);">
+          📜 Conversación Restaurada (${data.historial.length} turnos)
+        </div>
+      `;
+
+      data.historial.forEach(item => {
+        const qEsc = escapeHtml(item.pregunta);
+        const rHtml = formatMarkdownToHtml(item.respuesta_completa);
+        const fEsc = escapeHtml(item.fecha);
+
+        chatHtml += `
+          <div class="chat-msg user">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px; opacity:0.8;">
+              <strong>${escapeHtml(item.usuario || userName)}:</strong>
+              <span style="font-family:var(--font-mono);">${fEsc}</span>
+            </div>
+            ${qEsc}
+          </div>
+          <div class="chat-msg bot">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px; opacity:0.8;">
+              <strong>Vector:</strong>
+              <span style="font-family:var(--font-mono);">${fEsc}</span>
+            </div>
+            ${rHtml}
+          </div>
+        `;
+
+        chatSessionTurns.push({ role: 'user', content: item.pregunta });
+        chatSessionTurns.push({ role: 'assistant', content: item.respuesta_completa });
+      });
+
+      history.innerHTML = chatHtml;
+      updateTurnBadge();
+      history.scrollTop = history.scrollHeight;
+
+      const histPanel = document.getElementById('history-panel');
+      if (histPanel) histPanel.style.display = 'none';
+
+      if (typeof window.cargarSesionesSidebar === 'function') {
+        window.cargarSesionesSidebar();
+      }
+
+    } catch (err) {
+      history.innerHTML = `<div style="color:var(--rose-neon); padding:10px;">❌ Error restaurando historial: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // Drawer de Historial
+  async function toggleHistorialDrawer() {
+    const panel = document.getElementById('history-panel');
+    if (!panel) return;
+    if (panel.style.display === 'none' || !panel.style.display) {
+      panel.style.display = 'block';
+      await cargarHistorialConsultas();
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  async function cargarHistorialConsultas() {
+    const container = document.getElementById('history-list-content');
+    const badge = document.getElementById('history-total-badge');
+    if (!container) return;
+    container.innerHTML = '<span style="color:var(--text-muted); font-size:12px; padding:8px;">⏳ Cargando tus hilos de conversación...</span>';
+
+    try {
+      const userName = getCurrentUserName();
+      const resSesiones = await fetch(`/api/chat/sesiones/?user_name=${encodeURIComponent(userName)}&limite=20`);
+      let dataSesiones = { sesiones: [] };
+      if (resSesiones.ok) {
+        dataSesiones = await resSesiones.json();
+      }
+
+      if (dataSesiones.sesiones && dataSesiones.sesiones.length > 0) {
+        if (badge) badge.textContent = `${dataSesiones.sesiones.length} sesiones`;
+        let html = `
+          <div style="font-size:12px; font-weight:700; color:var(--text-pure); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span>💬 Hilos de ${escapeHtml(userName)}:</span>
+            <button type="button" onclick="iniciarNuevaConversacion()" class="btn-tool" style="font-size:11px;">➕ Nuevo hilo</button>
+          </div>
+        `;
+
+        dataSesiones.sesiones.forEach(s => {
+          const titEsc = escapeHtml(s.titulo);
+          const fAct = escapeHtml(s.fecha_actualizacion || s.fecha_inicio);
+          const sIdEsc = escapeHtml(s.session_id);
+          const esActiva = (s.session_id === currentSessionId);
+
+          html += `
+            <div class="history-item-card" style="${esActiva ? 'border-left: 4px solid var(--emerald-neon); background: rgba(16, 185, 129, 0.08);' : ''}">
+              <div class="history-item-header">
+                <span class="history-item-q" onclick="cargarTodoElHistorialEnChat(50, '${sIdEsc}')" title="Haz clic para reanudar esta conversación">
+                  💬 ${titEsc} ${esActiva ? '<span style="background:var(--emerald-neon); color:#060a14; font-size:9.5px; padding:1px 6px; border-radius:8px; font-weight:bold;">ACTIVA</span>' : ''}
+                </span>
+                <span class="history-item-date">📅 ${fAct}</span>
+              </div>
+              <div class="history-item-ans" style="font-size:11px;">
+                ${s.mensajes_count} ${s.mensajes_count === 1 ? 'mensaje' : 'mensajes'}
+              </div>
+              <div class="history-actions" style="margin-top:6px;">
+                <button type="button" class="history-btn-load" onclick="cargarTodoElHistorialEnChat(50, '${sIdEsc}')">
+                  📂 Reanudar esta conversación
+                </button>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+        return;
+      }
+
+      container.innerHTML = '<span style="color:var(--text-dim); font-size:12px; padding:8px;">No hay consultas previas registradas.</span>';
+    } catch (err) {
+      container.innerHTML = `<span style="color:var(--rose-neon); font-size:12px; padding:8px;">❌ No se pudo cargar: ${escapeHtml(err.message)}</span>`;
+    }
+  }
+
+  // Envío y Streaming SSE de Chat
+  async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    let msg = input.value.trim();
+    msg = msg.replace(/^(Tú\s*:\s*)+/i, '').replace(/^(Tu\s*:\s*)+/i, '').trim();
+    if (!msg) return;
+
+    const history = document.getElementById('chat-history');
+    const indicator = document.getElementById('chat-indicator');
+    const sendBtn = document.getElementById('chat-send-btn');
+
+    const sendingFiles = [...currentAttachedFiles];
+
+    let fileBadgeHtml = '';
+    if (sendingFiles.length > 0) {
+      fileBadgeHtml = `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">` +
+        sendingFiles.map(f => {
+          const badgeInfo = getFileBadgeInfo(f.name, f.isImage);
+          return `
+            <div class="chat-bubble-attachment">
+              <span class="bubble-badge" style="background:${f.isImage ? '#ec4899' : '#0284c7'};">${badgeInfo.label}</span>
+              <span style="font-weight:600; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(f.name)}</span>
+              <span style="opacity:0.7;">(${formatFileSize(f.size)})</span>
+            </div>
+          `;
+        }).join('') + `</div>`;
+    }
+
+    const currentName = getCurrentUserName();
+    history.innerHTML += `
+      <div class="chat-msg user">
+        <strong>${escapeHtml(currentName)}:</strong> ${escapeHtml(msg)}
+        ${fileBadgeHtml}
+      </div>
+    `;
+
+    input.value = '';
+    removeAttachedFile();
+    input.disabled = true;
+    sendBtn.disabled = true;
+    indicator.textContent = '🧠 Razonando y aprendiendo...';
+    indicator.style.color = 'var(--cyan-neon)';
+    history.scrollTop = history.scrollHeight;
+
+    const botMsgDiv = document.createElement('div');
+    botMsgDiv.className = 'chat-msg bot';
+    botMsgDiv.innerHTML = `<strong>Vector:</strong> <span class="stream-content" style="color:var(--text-muted); font-style:italic;">Conectando...</span>`;
+    history.appendChild(botMsgDiv);
+    const textSpan = botMsgDiv.querySelector('.stream-content');
+    history.scrollTop = history.scrollHeight;
+
+    let fullResponse = '';
+    let streamFailed = false;
+
+    try {
+      const streamPayload = {
+        mensaje: msg,
+        historial: chatSessionTurns,
+        session_id: currentSessionId,
+        user_name: currentName,
+        archivos: sendingFiles.map(f => ({
+          nombre: f.name,
+          tipo: f.type,
+          es_imagen: f.isImage,
+          contenido_base64: f.base64,
+          contenido_texto: f.text
+        }))
+      };
+
+      const response = await fetch('/api/chat/stream/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        },
+        body: JSON.stringify(streamPayload)
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Fallback to standard endpoint');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      textSpan.style.fontStyle = 'normal';
+      textSpan.style.color = 'inherit';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const rawData = line.slice(6);
+            if (rawData === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(rawData);
+              if (parsed.token) {
+                fullResponse += parsed.token;
+                textSpan.innerHTML = formatMarkdownToHtml(fullResponse);
+                history.scrollTop = history.scrollHeight;
+              }
+            } catch (e) {
+              fullResponse += rawData;
+              textSpan.innerHTML = formatMarkdownToHtml(fullResponse);
+              history.scrollTop = history.scrollHeight;
+            }
+          }
+        }
+      }
+
+    } catch (streamErr) {
+      streamFailed = true;
+    }
+
+    if (streamFailed || !fullResponse.trim()) {
+      try {
+        const res = await fetch('/api/chat/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+          },
+          body: JSON.stringify({
+            mensaje: msg,
+            historial: chatSessionTurns,
+            session_id: currentSessionId,
+            user_name: currentName,
+            archivos: sendingFiles.map(f => ({
+              nombre: f.name,
+              tipo: f.type,
+              es_imagen: f.isImage,
+              contenido_base64: f.base64,
+              contenido_texto: f.text
+            }))
+          })
+        });
+        const data = await res.json();
+        fullResponse = data.respuesta || 'Respuesta vacía';
+        textSpan.style.fontStyle = 'normal';
+        textSpan.style.color = 'inherit';
+        textSpan.innerHTML = formatMarkdownToHtml(fullResponse);
+      } catch (err) {
+        textSpan.innerHTML = `<span style="color:var(--rose-neon);">Error de conexión: ${escapeHtml(err.message)}</span>`;
+      }
+    }
+
+    if (fullResponse.trim()) {
+      chatSessionTurns.push({ role: 'user', content: msg });
+      chatSessionTurns.push({ role: 'assistant', content: fullResponse });
+      updateTurnBadge();
+      setTimeout(refreshMentalMap, 1200);
+
+      if (typeof window.cargarSesionesSidebar === 'function') {
+        window.cargarSesionesSidebar();
+      }
+    }
+
+    input.disabled = false;
+    sendBtn.disabled = false;
+    indicator.textContent = '🟢 Listo';
+    indicator.style.color = 'var(--emerald-neon)';
+    input.focus();
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function formatMarkdownToHtml(md) {
+    if (!md) return '';
+
+    // 1. Detección y renderizado de Tablas Markdown (| Columna | Columna |)
+    const lines = md.split('\n');
+    const processedLines = [];
+    let inTable = false;
+    let tableRows = [];
+
+    function flushTable() {
+      if (tableRows.length < 2) {
+        processedLines.push(...tableRows);
+        tableRows = [];
+        return;
+      }
+      const rawHeader = tableRows[0].replace(/^\||\|$/g, '').split('|').map(s => escapeHtml(s.trim()));
+      const hasSep = /^\|[\s:-|]+\|$/.test(tableRows[1].trim());
+      const bodyRows = hasSep ? tableRows.slice(2) : tableRows.slice(1);
+
+      let tblHtml = '<div class="table-responsive my-2"><table class="table table-dark table-sm table-bordered text-center align-middle mb-0" style="background:rgba(15,23,42,0.92); border:1px solid rgba(56,189,248,0.25); border-radius:8px; overflow:hidden;">';
+      tblHtml += '<thead style="background:rgba(2,132,199,0.28);"><tr class="text-info fw-bold">';
+      rawHeader.forEach(h => { tblHtml += '<th class="py-1 px-2" style="font-size:12px;">' + h + '</th>'; });
+      tblHtml += '</tr></thead><tbody>';
+      bodyRows.forEach(r => {
+        const cols = r.replace(/^\||\|$/g, '').split('|').map(s => escapeHtml(s.trim()));
+        tblHtml += '<tr>';
+        cols.forEach(c => { tblHtml += '<td class="py-1 px-2 text-light" style="font-size:11.5px;">' + c + '</td>'; });
+        tblHtml += '</tr>';
+      });
+      tblHtml += '</tbody></table></div>';
+      processedLines.push(tblHtml);
+      tableRows = [];
+    }
+
+    for (const line of lines) {
+      const s = line.trim();
+      if (s.startsWith('|') && s.endsWith('|')) {
+        inTable = true;
+        tableRows.push(s);
+      } else {
+        if (inTable) {
+          flushTable();
+          inTable = false;
+        }
+        processedLines.push(line);
+      }
+    }
+    if (inTable) flushTable();
+
+    let html = processedLines.join('\n');
+
+    // 2. Bloques de código con botón de copiar
+    html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+      const safeCode = encodeURIComponent(code);
+      return `
+        <div style="background:#060a14; border:1px solid var(--border-subtle); border-radius:8px; margin:10px 0; overflow:hidden;">
+          <div style="background:rgba(15,23,42,0.9); padding:4px 12px; display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); border-bottom:1px solid var(--border-subtle);">
+            <span>${lang || 'código'}</span>
+            <button type="button" onclick="navigator.clipboard.writeText(decodeURIComponent('${safeCode}')).then(()=>{this.textContent='✓ Copiado';setTimeout(()=>this.textContent='Copiar',2000);})" style="background:transparent; border:none; color:var(--cyan-neon); cursor:pointer; font-size:11px; font-weight:bold;">Copiar</button>
+          </div>
+          <pre style="margin:0; padding:12px; font-family:var(--font-mono); font-size:12px; color:#38bdf8; overflow-x:auto;"><code>${code}</code></pre>
+        </div>
+      `;
+    });
+
+    // 3. Gráficos de barras de caracteres / progreso estilo ASCII (ej: [████████░░] 80%)
+    html = html.replace(/\[([█#=]+[░\-_.]*)\]\s*(\d{1,3}%)/g, (match, bar, pct) => {
+      const val = Math.min(100, Math.max(0, parseInt(pct, 10)));
+      return `<span class="d-inline-flex align-items-center gap-1 font-monospace" style="vertical-align:middle;"><span class="progress d-inline-block" style="width:70px; height:8px; background:rgba(30,41,59,0.8); border-radius:4px;"><span class="progress-bar bg-info" style="width:${val}%;"></span></span> <span style="font-size:11.5px; color:var(--cyan-neon); font-weight:bold;">${pct}</span></span>`;
+    });
+
+    // 4. Encabezados Markdown
+    html = html.replace(/^###\s*(.+)$/gm, '<h5 class="text-info fw-bold mt-2 mb-2 d-flex align-items-center gap-2" style="font-family:var(--font-heading); font-size:15px; letter-spacing:0.5px;">$1</h5>');
+    html = html.replace(/^####\s*(.+)$/gm, '<h6 class="text-warning fw-bold mt-2 mb-1 d-flex align-items-center gap-2" style="font-family:var(--font-heading); font-size:13px;">$1</h6>');
+
+    html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(15,23,42,0.8); color:var(--cyan-neon); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); font-size:12px; border:1px solid var(--border-subtle);">$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:var(--text-pure);">$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--cyan-neon); text-decoration:underline;">$1</a>');
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  }
+
+  // Diagnóstico de Proyecto ZIP
+  async function handleZipUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const history = document.getElementById('chat-history');
+    const indicator = document.getElementById('chat-indicator');
+    const sendBtn = document.getElementById('chat-send-btn');
+    const input = document.getElementById('chat-input');
+
+    input.disabled = true;
+    sendBtn.disabled = true;
+    indicator.textContent = '📦 Desempaquetando y analizando código...';
+    indicator.style.color = 'var(--purple-neon)';
+
+    history.innerHTML += `
+      <div class="chat-msg user">
+        <strong>${escapeHtml(getCurrentUserName())}:</strong> [Archivo ZIP Adjunto] <strong>${escapeHtml(file.name)}</strong> (${formatFileSize(file.size)})
+      </div>
+    `;
+
+    const botMsgDiv = document.createElement('div');
+    botMsgDiv.className = 'chat-msg bot';
+    botMsgDiv.innerHTML = `<strong>Vector:</strong> <span class="stream-content" style="color:var(--text-muted); font-style:italic;">Desempaquetando proyecto, analizando sintaxis e indexando estructura...</span>`;
+    history.appendChild(botMsgDiv);
+    const textSpan = botMsgDiv.querySelector('.stream-content');
+    history.scrollTop = history.scrollHeight;
+
+    const formData = new FormData();
+    formData.append('archivo_zip', file);
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    try {
+      const resp = await fetch('/api/codigo/analizar_zip/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: formData
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.success) {
+        textSpan.innerHTML = `<span style="color:var(--rose-neon);">❌ <strong>Error en diagnóstico:</strong> ${escapeHtml(data.error || 'Fallo al procesar el archivo')}</span>`;
+      } else {
+        textSpan.style.color = 'inherit';
+        textSpan.innerHTML = formatMarkdownToHtml(data.reporte_markdown);
+
+        const projBadge = document.getElementById('project-indicator');
+        const projName = document.getElementById('project-name-badge');
+        if (projBadge && projName) {
+          projName.textContent = data.proyecto || file.name;
+          projBadge.style.display = 'inline-flex';
+        }
+
+        chatSessionTurns.push({ role: 'user', content: `Subí el archivo ${file.name} para análisis de código y diagnóstico.` });
+        chatSessionTurns.push({ role: 'assistant', content: `Diagnóstico completado para ${file.name}. Estado: ${data.diagnostico.estado}.` });
+
+        setTimeout(refreshMentalMap, 1000);
+      }
+    } catch (err) {
+      textSpan.innerHTML = `<span style="color:var(--rose-neon);">❌ <strong>Error de red:</strong> ${escapeHtml(err.message)}</span>`;
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      indicator.textContent = '🟢 Listo';
+      indicator.style.color = 'var(--emerald-neon)';
+      event.target.value = '';
+      history.scrollTop = history.scrollHeight;
+      input.focus();
+    }
+  }
+
+  function cerrarProyectoActivo(event) {
+    if (event) event.stopPropagation();
+    fetch('/api/codigo/cerrar_proyecto/', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        const projBadge = document.getElementById('project-indicator');
+        if (projBadge) projBadge.style.display = 'none';
+        const history = document.getElementById('chat-history');
+        if (history) {
+          history.innerHTML += `
+            <div style="text-align:center; margin:10px 0; color:var(--cyan-neon); font-size:12px; font-weight:600;">
+              📁 Proyecto descargado de memoria. Modo general activo.
+            </div>
+          `;
+          history.scrollTop = history.scrollHeight;
+        }
+      })
+      .catch(err => console.error("Error al cerrar proyecto:", err));
+  }
+
+  function refreshMentalMap() {
+    if (currentMode === '2d') {
+      fetch(URL_DATA)
+        .then(r => r.json())
+        .then(data => {
+          networkDataset = data;
+          if (visNetwork) {
+            visNetwork.setData(data);
+          }
+          updateLiveBadges();
+        });
+    } else {
+      init3D();
+    }
+  }
+
+  // J.A.R.V.I.S. VISION & SENSORY
+  let visionStream = null;
+  let autoVisionInterval = null;
+  let isAutoVision = false;
+
+  function toggleVisionHUD() {
+    const hud = document.getElementById('vision-hud');
+    if (hud.style.display === 'none' || !hud.style.display) {
+      hud.style.display = 'block';
+      if (!visionStream) {
+        toggleCameraStream();
+      }
+    } else {
+      hud.style.display = 'none';
+      if (visionStream) {
+        toggleCameraStream();
+      }
+    }
+  }
+
+  async function toggleCameraStream() {
+    const video = document.getElementById('vision-video');
+    const toggleBtn = document.getElementById('vision-toggle-cam-btn');
+    const dot = document.getElementById('vision-live-dot');
+
+    if (visionStream) {
+      visionStream.getTracks().forEach(track => track.stop());
+      visionStream = null;
+      video.srcObject = null;
+      toggleBtn.textContent = '📹 Iniciar Cámara';
+      toggleBtn.style.background = 'var(--cyan-dark)';
+      dot.style.background = '#ef4444';
+      if (autoVisionInterval) {
+        clearInterval(autoVisionInterval);
+        autoVisionInterval = null;
+      }
+      return;
+    }
+
+    try {
+      visionStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
+      video.srcObject = visionStream;
+      toggleBtn.textContent = '🛑 Detener';
+      toggleBtn.style.background = '#dc2626';
+      dot.style.background = '#10b981';
+      document.getElementById('vision-summary-text').textContent = 'Sensores ópticos activos. Transmitiendo fotogramas...';
+    } catch (err) {
+      alert('No se pudo acceder a la cámara: ' + err.message);
+    }
+  }
+
+  async function triggerVisionDetection() {
+    const video = document.getElementById('vision-video');
+    if (!video.videoWidth) {
+      document.getElementById('vision-summary-text').textContent = 'Inicia la cámara primero para escanear.';
+      return;
+    }
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = video.videoWidth;
+    offscreen.height = video.videoHeight;
+    const ctx = offscreen.getContext('2d');
+    ctx.drawImage(video, 0, 0, offscreen.width, offscreen.height);
+    const dataUrl = offscreen.toDataURL('image/jpeg', 0.8);
+
+    const startTime = performance.now();
+    try {
+      const resp = await fetch('/api/vision/detect/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        },
+        body: JSON.stringify({ image: dataUrl })
+      });
+      const data = await resp.json();
+      const elapsed = Math.round(performance.now() - startTime);
+      document.getElementById('vision-latency').textContent = `${elapsed} ms`;
+
+      if (data.success) {
+        document.getElementById('vision-summary-text').textContent = data.summary || 'Escena despejada';
+        drawVisionOverlay(data.detections || [], offscreen.width, offscreen.height);
+      } else {
+        document.getElementById('vision-summary-text').textContent = 'Error: ' + (data.error || 'Detección fallida');
+      }
+    } catch (err) {
+      console.error('Error enviando imagen a visión:', err);
+    }
+  }
+
+  function drawVisionOverlay(detections, srcW, srcH) {
+    const canvas = document.getElementById('vision-canvas');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const scaleX = canvas.width / srcW;
+    const scaleY = canvas.height / srcH;
+
+    detections.forEach(det => {
+      const [x, y, w, h] = det.box;
+      const dx = x * scaleX;
+      const dy = y * scaleY;
+      const dw = w * scaleX;
+      const dh = h * scaleY;
+
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(dx, dy, dw, dh);
+
+      ctx.fillStyle = 'rgba(2, 132, 199, 0.85)';
+      const label = `${det.class} ${(det.confidence * 100).toFixed(0)}%`;
+      ctx.font = '11px monospace';
+      const textWidth = ctx.measureText(label).width;
+      ctx.fillRect(dx, Math.max(0, dy - 16), textWidth + 8, 16);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, dx + 4, Math.max(12, dy - 4));
+    });
+  }
+
+  function toggleAutoVision() {
+    const autoBtn = document.getElementById('vision-auto-btn');
+    isAutoVision = !isAutoVision;
+    if (isAutoVision) {
+      autoBtn.textContent = '⚡ Auto: ON';
+      autoBtn.style.background = 'var(--cyan-dark)';
+      triggerVisionDetection();
+      autoVisionInterval = setInterval(triggerVisionDetection, 2500);
+    } else {
+      autoBtn.textContent = '⚡ Auto: OFF';
+      autoBtn.style.background = '#1e293b';
+      if (autoVisionInterval) {
+        clearInterval(autoVisionInterval);
+        autoVisionInterval = null;
+      }
+    }
+  }
+
+  // Telemetría Centinela en segundo plano
+  function pollSentinelStatus() {
+    fetch('/api/sentinel/status/')
+      .then(r => r.json())
+      .then(data => {
+        if (data.cpu !== undefined) {
+          document.getElementById('sentinel-cpu').textContent = `${data.cpu}%`;
+          document.getElementById('sentinel-ram').textContent = `${data.ram}%`;
+          const badge = document.getElementById('sentinel-badge');
+          if (data.status === 'CRÍTICO') {
+            badge.style.borderColor = 'var(--rose-neon)';
+            badge.style.color = 'var(--rose-neon)';
+          } else if (data.status === 'ALERTA') {
+            badge.style.borderColor = 'var(--amber-neon)';
+            badge.style.color = 'var(--amber-neon)';
+          } else {
+            badge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+            badge.style.color = 'var(--cyan-primary)';
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Inicialización al cargar el DOM
+  document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('vector_user_name') === 'Invitado') {
+      localStorage.removeItem('vector_user_name');
+    }
+    setWorkspaceMode('split');
+    requestAnimationFrame(() => {
+      init2D();
+    });
+    pollSentinelStatus();
+    setInterval(pollSentinelStatus, 5000);
+
+    // Verificar si se solicitó abrir visión desde otra vista
+    if (sessionStorage.getItem('openVisionHUD') === 'true') {
+      sessionStorage.removeItem('openVisionHUD');
+      setTimeout(toggleVisionHUD, 600);
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Redirección a Vector 2026{% endblock %}
+{% block content %}
+<div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+    <h2 style="color: #38bdf8;">Redireccionando a la Estación Neural de Vector...</h2>
+    <p>Esta vista ha sido integrada en la consola central J.A.R.V.I.S.</p>
+    <script>window.location.href = "{% url 'network-view' %}";</script>
+</div>
+{% endblock %}

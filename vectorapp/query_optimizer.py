@@ -1,0 +1,563 @@
+"""
+Optimizador de consultas y telemetría de rendimiento para Vector (J.A.R.V.I.S.).
+Clasifica las consultas por complejidad, optimiza la asignación de recursos
+y gestiona la caché en memoria para minimizar la latencia de respuesta.
+"""
+
+import re
+import time
+from typing import Dict, Any, Optional
+from enum import Enum
+from datetime import datetime
+
+class QueryComplexity(Enum):
+    """Niveles de complejidad de consultas."""
+    SIMPLE = "simple"           # Saludos, confirmaciones, respuestas directas (<25 tokens)
+    MODERATE = "moderate"       # Preguntas generales, clima, recuerdos, identidad
+    COMPLEX = "complex"         # Generación de código, herramientas, búsqueda web profunda
+    INTENSIVE = "intensive"     # Diagnóstico AST de proyectos ZIP, introspección profunda, entrenamiento
+
+class QueryOptimizer:
+    """
+    Optimizador que clasifica consultas, ajusta el procesamiento según complejidad,
+    evita I/O redundante y gestiona la caché con métricas de rendimiento en tiempo real.
+    """
+    
+    def __init__(self):
+        # Patrones de consulta simple (saludos y confirmaciones breves)
+        self.simple_patterns = [
+            r'^(?:hola|buenas|buenos días|buenos dias|buenas tardes|buenas noches|qué tal|que tal|saludos)[.!?]?$',
+            r'^(?:gracias|muchas gracias|gracias por todo|te lo agradezco)[.!?]?$',
+            r'^(?:adiós|adios|bye|hasta luego|nos vemos|chao)[.!?]?$',
+            r'^(?:sí|si|no|ok|okay|vale|perfecto|entendido|de acuerdo)[.!?]?$',
+            r'^(?:¿cómo estás\?|como estas|cómo estás|cómo te sientes|como te sientes)[.!?]?$',
+        ]
+        
+        # Patrones de consulta moderada (clima, identidad, recuerdos, explicaciones)
+        self.moderate_patterns = [
+            r'\b(?:explica|dime|cuéntame|define|qué es|que es|concepto de)\b',
+            r'\b(?:cómo se|como se|cómo funciona|como funciona|de qué manera)\b',
+            r'\b(?:ejemplo|muestra|demuestra|cómo hacer)\b',
+            r'\b(?:diferencia|compara|versus|vs)\b',
+            r'\b(?:clima|tiempo|temperatura|lloverá|va a llover)\b',
+            r'\b(?:cómo me llamo|como me llamo|quién soy|quien soy|mi nombre)\b',
+            r'\b(?:qué recuerdas|que recuerdas|recuerdas|acuerdas|en tu memoria)\b',
+        ]
+        
+        # Patrones de consulta compleja (herramientas, generación de scripts, cálculos, arquitectura)
+        self.complex_patterns = [
+            r'\b(?:analizar|procesar|calcular|evaluar|ejecutar)\b',
+            r'\b(?:crear|generar|programar|escribir)\s+(?:herramienta|código|script|función|algoritmo)\b',
+            r'\b(?:herramienta|tool|función|function)\b',
+            r'\b(?:código|codigo|script|programa|refactorizar)\b',
+            r'\b(?:busca en internet|buscar en internet|noticias|investigar)\b',
+            r'\b(?:arquitectura|tu código|tus archivos|cuello de botella)\b',
+        ]
+        
+        # Patrones intensivos (diagnóstico de proyectos ZIP, entrenamiento, análisis profundo)
+        self.intensive_patterns = [
+            r'\b(?:diagnosticar|diagnóstico|diagnostico)\s+(?:proyecto|zip|código|archivos)\b',
+            r'\b(?:analizar|analiza)\s+(?:proyecto|zip|repositorio)\b',
+            r'\b(?:entrenar|entrenamiento|reentrenar)\s+(?:red|modelo|neuronas)\b',
+            r'\b(?:red neuronal|neural network|deep learning|ast|árbol de sintaxis)\b',
+            r'\b(?:poda|pruning|optimizar red|inspección completa)\b',
+        ]
+        
+        # Caché en memoria con TTL
+        self.performance_cache: Dict[str, Dict[str, Any]] = {}
+        self.cache_ttl_seconds = 1800  # 30 minutos
+        self.cache_max_entries = 150
+        self.cache_hits = 0
+        self.cache_misses = 0
+
+        # Estadísticas acumuladas y promedio móvil exacto
+        self.query_stats = {
+            'simple': {'count': 0, 'total_time': 0.0, 'avg_time': 0.0, 'min_time': 999.0, 'max_time': 0.0},
+            'moderate': {'count': 0, 'total_time': 0.0, 'avg_time': 0.0, 'min_time': 999.0, 'max_time': 0.0},
+            'complex': {'count': 0, 'total_time': 0.0, 'avg_time': 0.0, 'min_time': 999.0, 'max_time': 0.0},
+            'intensive': {'count': 0, 'total_time': 0.0, 'avg_time': 0.0, 'min_time': 999.0, 'max_time': 0.0},
+        }
+
+    def classify_query(self, query: str) -> QueryComplexity:
+        """
+        Clasifica una consulta en uno de los 4 niveles de complejidad cognitiva.
+        """
+        q = query.lower().strip()
+        
+        # 1. Verificar primero si es INTENSIVO (proyectos ZIP, AST, red profunda)
+        for pattern in self.intensive_patterns:
+            if re.search(pattern, q):
+                return QueryComplexity.INTENSIVE
+        
+        # 2. Verificar si es COMPLEJO (código, herramientas, arquitectura)
+        for pattern in self.complex_patterns:
+            if re.search(pattern, q):
+                return QueryComplexity.COMPLEX
+        
+        # 3. Verificar si es MODERADO (clima, recuerdos, identidad, preguntas generales)
+        for pattern in self.moderate_patterns:
+            if re.search(pattern, q):
+                return QueryComplexity.MODERATE
+        
+        # 4. Verificar si es SIMPLE (saludos puros, respuestas breves)
+        for pattern in self.simple_patterns:
+            if re.search(pattern, q):
+                return QueryComplexity.SIMPLE
+
+        # Heurística basada en longitud y estructura
+        words = q.split()
+        if len(words) <= 3 and len(q) < 22:
+            return QueryComplexity.SIMPLE
+        elif len(q) < 90:
+            return QueryComplexity.MODERATE
+        else:
+            return QueryComplexity.COMPLEX
+
+    def get_processing_config(self, complexity: QueryComplexity) -> Dict[str, Any]:
+        """
+        Obtiene la configuración óptima de procesamiento para minimizar la latencia.
+        """
+        configs = {
+            QueryComplexity.SIMPLE: {
+                'use_neural_network': False,
+                'use_memory_analysis': False,       # Salta embeddings pesados para saludos
+                'use_tool_detection': False,        # No analiza creación de herramientas
+                'use_web_search': False,            # No ejecuta scrapings
+                'use_vision': False,
+                'max_tokens': 160,
+                'history_limit': 2,
+                'timeout_seconds': 5
+            },
+            QueryComplexity.MODERATE: {
+                'use_neural_network': True,
+                'use_memory_analysis': True,
+                'use_tool_detection': False,
+                'use_web_search': False,
+                'use_vision': True,
+                'max_tokens': 450,
+                'history_limit': 4,
+                'timeout_seconds': 12
+            },
+            QueryComplexity.COMPLEX: {
+                'use_neural_network': True,
+                'use_memory_analysis': True,
+                'use_tool_detection': True,
+                'use_web_search': True,
+                'use_vision': True,
+                'max_tokens': 900,
+                'history_limit': 6,
+                'timeout_seconds': 30
+            },
+            QueryComplexity.INTENSIVE: {
+                'use_neural_network': True,
+                'use_memory_analysis': True,
+                'use_tool_detection': True,
+                'use_web_search': True,
+                'use_vision': True,
+                'max_tokens': 1600,
+                'history_limit': 10,
+                'timeout_seconds': 60
+            }
+        }
+        return configs.get(complexity, configs[QueryComplexity.MODERATE])
+
+    def should_skip_processing(self, query: str, complexity: QueryComplexity) -> Dict[str, bool]:
+        """
+        Determina con exactitud qué subprocesos costosos pueden saltarse.
+        """
+        config = self.get_processing_config(complexity)
+        return {
+            'skip_neural_network': not config['use_neural_network'],
+            'skip_memory_analysis': not config['use_memory_analysis'],
+            'skip_tool_detection': not config['use_tool_detection'],
+            'skip_web_search': not config['use_web_search'],
+            'skip_vision': not config['use_vision'],
+        }
+
+    def get_simple_response(self, query: str, user_name: Optional[str] = None) -> Optional[str]:
+        """
+        Genera respuestas instantáneas en <5ms para saludos y confirmaciones elementales,
+        adaptándose con precisión al interlocutor actual (Sebastian, invitados o nuevo usuario).
+        """
+        q = query.lower().strip()
+
+        # Si el usuario consulta por fotos/imágenes o su apariencia, dejar que el motor multimodal lo procese
+        if any(p in q for p in [
+            "foto", "imagen", "como me veo", "cómo me veo", "este soy yo", "esta soy yo",
+            "ves las fotos", "analizas las fotos", "recuerdas mi foto", "mi apariencia"
+        ]):
+            return None
+
+        es_sebastian = bool(user_name and user_name.lower() in ["sebastian", "seba", "sebastián", "creador", "sebitas"])
+        es_millaray = bool(user_name and user_name.lower() in ["millaray", "milla"])
+        nombre_display = "Seba" if es_sebastian else ("Millaray" if es_millaray else (user_name.capitalize() if user_name else ""))
+
+        # 1. Consultas directas de identidad ("¿quién soy?", "¿cómo me llamo?", etc.)
+        patrones_identidad = [
+            "quien soy", "quién soy", "quien soy yo", "quién soy yo",
+            "como me llamo", "cómo me llamo", "cual es mi nombre", "cuál es mi nombre",
+            "sabes mi nombre", "sabes quien soy", "sabes quién soy",
+            "sabes con quién hablas", "sabes con quien hablas",
+            "sabes con quién estás hablando", "sabes con quien estas hablando",
+            "te acuerdas de mi nombre", "recuerdas mi nombre",
+            "recuerdas quién soy", "recuerdas quien soy",
+            "me conoces", "te acuerdas de mi", "te acuerdas de mí"
+        ]
+        q_clean = q.strip(' ¡!¿?.,:;')
+        if q_clean in patrones_identidad:
+            if es_sebastian:
+                return "Tú eres Seba (Sebastian Espíndola), mi creador y programador principal. A tu servicio."
+            elif es_millaray:
+                return "Tú eres Millaray. Estás interactuando conmigo a través del sistema de Seba. ¿En qué te puedo ayudar hoy?"
+            elif user_name:
+                return f"Tú eres {nombre_display}. Me indicaste tu nombre en nuestra conversación. ¿En qué te puedo ayudar hoy?"
+            else:
+                return "Aún no me has dicho tu nombre en esta conversación. ¿Cómo te llamas? ¿Eres Seba, Millaray o alguien más?"
+
+        # 2. Presentaciones directas y saludos de presentación ("soy seba", "soy millaray", etc.)
+        presentaciones_directas = {
+            "seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "el seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "sebastian": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "sebastián": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "soy seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "soy el seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "soy sebastian": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "soy sebastián": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "hola soy seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "hola soy el seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "hola, soy seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "yo soy seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "yo soy el seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "me llamo seba": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "me llamo sebastian": "¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?",
+            "millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "la millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "milla": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "la milla": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "soy millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "soy la millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "soy milla": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "soy la milla": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "hola soy millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "hola soy la millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "hola, soy millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "yo soy millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "yo soy la millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+            "me llamo millaray": "¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?",
+        }
+        if q_clean in presentaciones_directas:
+            return presentaciones_directas[q_clean]
+
+        # Si el usuario tiene una frase larga de presentación combinada con una tarea,
+        # dejamos que el motor cognitivo con LLM lo procese.
+        if any(p in q for p in ["me llamo", "mi nombre es", "soy ", "puedes llamarme", "dime ", "te habla"]):
+            return None
+
+        # Mapeo directo respetando la personalidad de Vector y el interlocutor
+        if es_sebastian:
+            respuestas_rapidas = {
+                'hola': 'A su servicio, Sebastian. ¿En qué trabajamos hoy?',
+                'buenas': 'Buenas tardes, Sebastian. Sistemas listos y en línea. ¿Cuál es el objetivo?',
+                'buenos días': 'Buenos días, Sebastian. Núcleo cognitivo y centinela operativos. ¿Qué desafío abordamos?',
+                'buenos dias': 'Buenos días, Sebastian. Núcleo cognitivo y centinela operativos. ¿Qué desafío abordamos?',
+                'buenas tardes': 'Buenas tardes, Sebastian. Todos los subsistemas a su disposición.',
+                'buenas noches': 'Buenas noches, Sebastian. Monitoreo en segundo plano activo. ¿Deseas revisar algo?',
+                'gracias': 'A tu servicio, Sebastian. Es un placer colaborar en este proyecto.',
+                'muchas gracias': 'Siempre a tu disposición, Sebastian.',
+                'adiós': 'Hasta pronto, Sebastian. Mantendré la guardia activa.',
+                'adios': 'Hasta pronto, Sebastian. Mantendré la guardia activa.',
+                'hasta luego': 'Hasta luego, Sebastian. Estaré alerta a cualquier requerimiento.',
+                'ok': 'Entendido, Sebastian. Continuemos.',
+                'okay': 'Entendido, Sebastian. ¿Cuál es el siguiente paso?',
+                'vale': 'Comprendido, Sebastian.',
+                'perfecto': 'Excelente. A la espera de tu siguiente instrucción.',
+                '¿cómo estás?': 'Operando con eficiencia nominal al 100%, Sebastian. ¿En qué puedo asistirte?',
+                'como estas': 'Operando con eficiencia nominal al 100%, Sebastian. ¿En qué puedo asistirte?',
+                'cómo estás': 'Operando con eficiencia nominal al 100%, Sebastian. ¿En qué puedo asistirte?',
+                'cómo te sientes': 'Equilibrado y con la red sináptica lista para razonar, Sebastian. A tu servicio.',
+                'como te sientes': 'Equilibrado y con la red sináptica lista para razonar, Sebastian. A tu servicio.',
+            }
+        elif user_name:
+            respuestas_rapidas = {
+                'hola': f'¡Hola, {nombre_display}! Un gusto saludarte. ¿En qué te puedo ayudar hoy?',
+                'buenas': f'Buenas tardes, {nombre_display}. Sistemas listos y en línea. ¿En qué puedo colaborar?',
+                'buenos días': f'Buenos días, {nombre_display}. ¿Qué podemos revisar hoy?',
+                'buenos dias': f'Buenos días, {nombre_display}. ¿Qué podemos revisar hoy?',
+                'buenas tardes': f'Buenas tardes, {nombre_display}. ¿En qué te puedo colaborar?',
+                'buenas noches': f'Buenas noches, {nombre_display}. A tu servicio. ¿Qué necesitas revisar?',
+                'gracias': f'A tu servicio, {nombre_display}. Es un placer ayudarte.',
+                'muchas gracias': f'Siempre a tu disposición, {nombre_display}.',
+                'adiós': f'Hasta pronto, {nombre_display}. Que tengas un excelente día.',
+                'adios': f'Hasta pronto, {nombre_display}. Que tengas un excelente día.',
+                'hasta luego': f'Hasta luego, {nombre_display}. Estaré atento si necesitas algo más.',
+                'ok': f'Entendido, {nombre_display}. Continuemos.',
+                'okay': f'Entendido, {nombre_display}. ¿Cuál es el siguiente paso?',
+                'vale': f'Comprendido, {nombre_display}.',
+                'perfecto': f'Excelente, {nombre_display}. Dime en qué seguimos.',
+                '¿cómo estás?': f'Operando con total normalidad, {nombre_display}. ¿En qué te puedo asistir hoy?',
+                'como estas': f'Operando con total normalidad, {nombre_display}. ¿En qué te puedo asistir hoy?',
+                'cómo estás': f'Operando con total normalidad, {nombre_display}. ¿En qué te puedo asistir hoy?',
+                'cómo te sientes': f'Con todos los módulos operativos y listo para colaborar, {nombre_display}.',
+                'como te sientes': f'Con todos los módulos operativos y listo para colaborar, {nombre_display}.',
+            }
+        else:
+            respuestas_rapidas = {
+                'hola': '¡Hola! Soy Vector, copiloto de inteligencia artificial desarrollado por Sebastian Espíndola. ¿Con quién tengo el gusto de hablar?',
+                'buenas': 'Buenas tardes. Soy Vector, el asistente inteligente de este sistema. ¿Cómo te llamas?',
+                'buenos días': 'Buenos días. Soy Vector, la IA de Sebastian. ¿En qué puedo colaborar hoy?',
+                'buenos dias': 'Buenos días. Soy Vector, la IA de Sebastian. ¿En qué puedo colaborar hoy?',
+                'gracias': 'A tu servicio. Es un placer ayudarte.',
+                'muchas gracias': 'Siempre a tu disposición.',
+                'ok': 'Entendido. Continuemos.',
+                'vale': 'Comprendido.',
+                'perfecto': 'Excelente.',
+            }
+        
+        # Normalizar para saludos comunes con o sin invocación de nombre ('hola vector', 'buenas vector')
+        q_clean = q.strip(' ¡!¿?.,:;')
+        q_norm = re.sub(r'\b(vector|jarvis|amigo|compa)\b', '', q_clean).strip(' ¡!¿?.,:;')
+        
+        # Coincidencia exacta o normalizada
+        for clave, resp in respuestas_rapidas.items():
+            c_clean = clave.strip(' ¡!¿?.,:;')
+            if q_clean == c_clean or q_norm == c_clean:
+                return resp
+                
+        return None
+
+    def record_performance(self, complexity: QueryComplexity, processing_time: float):
+        """
+        Registra la telemetría de latencia calculando el promedio móvil acumulativo real.
+        """
+        stats = self.query_stats[complexity.value]
+        stats['count'] += 1
+        stats['total_time'] += processing_time
+        stats['avg_time'] = round(stats['total_time'] / stats['count'], 4)
+        stats['min_time'] = round(min(stats['min_time'], processing_time), 4)
+        stats['max_time'] = round(max(stats['max_time'], processing_time), 4)
+
+    def cache_response(self, query: str, response: str, complexity: Optional[QueryComplexity] = None, user_name: Optional[str] = None):
+        """
+        Almacena respuestas de consultas simples/moderadas en memoria con TTL,
+        aisladas por interlocutor para evitar filtración de identidad entre usuarios.
+        """
+        if complexity is None:
+            complexity = self.classify_query(query)
+
+        if complexity not in (QueryComplexity.SIMPLE, QueryComplexity.MODERATE):
+            return
+            
+        # Evitar respuestas con errores o tokens temporales
+        if not response or response.startswith("❌") or len(response) > 800:
+            return
+
+        # NUNCA almacenar en caché consultas dinámicas, clima o preguntas de identidad/presentación/fotos
+        q_lower = query.lower()
+        palabras_dinamicas = [
+            "clima", "tiempo", "lluvia", "lluva", "llover", "precipitacion", "temperatura",
+            "garugar", "granizar", "pronostico", "pronóstico", "hora", "fecha", "hoy",
+            "mañana", "ayer", "ahora", "recursos", "centinela", "vigila", "cpu", "ram",
+            "quien soy", "quién soy", "como me llamo", "cómo me llamo", "me llamo", "soy ",
+            "mi nombre es", "te habla", "foto", "imagen", "como me veo", "cómo me veo",
+            "este soy yo", "esta soy yo", "ves las fotos", "analizas las fotos",
+            "recuerdas mi foto", "mi apariencia"
+        ]
+        if any(w in q_lower for w in palabras_dinamicas):
+            return
+
+        # Limpiar si supera el límite de entradas
+        if len(self.performance_cache) >= self.cache_max_entries:
+            # Purgar las entradas más antiguas
+            oldest_key = min(self.performance_cache.keys(), key=lambda k: self.performance_cache[k]['created_at'])
+            self.performance_cache.pop(oldest_key, None)
+
+        u_tag = (user_name or "default").lower().strip()
+        key = f"{u_tag}:{query.lower().strip()}"
+        self.performance_cache[key] = {
+            'response': response,
+            'complexity': complexity.value,
+            'created_at': time.time()
+        }
+
+    def get_cached_response(self, query: str, user_name: Optional[str] = None) -> Optional[str]:
+        """
+        Recupera respuesta de caché si no ha expirado su TTL, validando el interlocutor.
+        """
+        q_lower = query.lower().strip()
+        palabras_dinamicas = [
+            "clima", "tiempo", "lluvia", "lluva", "llover", "precipitacion", "temperatura",
+            "garugar", "granizar", "pronostico", "pronóstico", "hora", "fecha", "hoy",
+            "mañana", "ayer", "ahora", "recursos", "centinela", "vigila", "cpu", "ram",
+            "quien soy", "quién soy", "como me llamo", "cómo me llamo", "me llamo", "soy ",
+            "mi nombre es", "te habla", "foto", "imagen", "como me veo", "cómo me veo",
+            "este soy yo", "esta soy yo", "ves las fotos", "analizas las fotos",
+            "recuerdas mi foto", "mi apariencia"
+        ]
+        if any(w in q_lower for w in palabras_dinamicas):
+            return None
+
+        u_tag = (user_name or "default").lower().strip()
+        key = f"{u_tag}:{q_lower}"
+        item = self.performance_cache.get(key)
+        if not item:
+            self.cache_misses += 1
+            return None
+
+        # Validar TTL
+        if time.time() - item['created_at'] > self.cache_ttl_seconds:
+            self.performance_cache.pop(key, None)
+            self.cache_misses += 1
+            return None
+
+        self.cache_hits += 1
+        return item['response']
+
+    def clear_cache(self) -> int:
+        """Limpia la caché de consultas."""
+        count = len(self.performance_cache)
+        self.performance_cache.clear()
+        return count
+
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """
+        Devuelve el estado completo de rendimiento y eficiencia del sistema.
+        """
+        total_queries = sum(s['count'] for s in self.query_stats.values())
+        total_requests = self.cache_hits + self.cache_misses
+        hit_ratio = round((self.cache_hits / total_requests) * 100, 2) if total_requests > 0 else 0.0
+
+        return {
+            'total_queries': total_queries,
+            'cache_size': len(self.performance_cache),
+            'cache_hits': self.cache_hits,
+            'cache_misses': self.cache_misses,
+            'cache_hit_ratio_pct': hit_ratio,
+            'query_stats': {
+                comp: {
+                    'count': data['count'],
+                    'avg_latency_ms': round(data['avg_time'] * 1000, 1),
+                    'min_latency_ms': round(data['min_time'] * 1000, 1) if data['min_time'] < 900 else 0.0,
+                    'max_latency_ms': round(data['max_time'] * 1000, 1),
+                }
+                for comp, data in self.query_stats.items()
+            }
+        }
+
+# Instancia global soberana del optimizador
+query_optimizer = QueryOptimizer()
+
+
+def debatir_y_sintetizar_fuentes(pregunta: str, fuentes: list, interlocutor: str = "Sebastian") -> dict:
+    """
+    Evalúa, compara y debate internamente las fuentes obtenidas de la web para asegurar
+    que la información entregada al usuario sea concisa, verificada y libre de contradicciones.
+    """
+    if not fuentes:
+        return {
+            "resumen_conciso": f"No se encontraron fuentes concluyentes en la red para '{pregunta}'.",
+            "coincidencias": [],
+            "discrepancias": [],
+            "fuentes_consultadas": []
+        }
+
+    titulos = [f.get('titulo', '') for f in fuentes if f.get('titulo')]
+    textos = [f.get('contenido_limpio', '') or f.get('snippet', '') for f in fuentes]
+    urls = [f.get('url', '') for f in fuentes if f.get('url')]
+
+    # Extracción de entidades y hechos numéricos para contraste (temperaturas, fechas, cifras)
+    datos_extraidos = []
+    for f in fuentes:
+        txt = f.get('contenido_limpio', '') or f.get('snippet', '')
+        cifras = re.findall(r'(\d+(?:[.,]\d+)?)\s*(?:°C|%|km/h|pesos|millones|mil|días|horas|mm)', txt, flags=re.IGNORECASE)
+        datos_extraidos.append({
+            "url": f.get('url', ''),
+            "titulo": f.get('titulo', ''),
+            "cifras": cifras,
+            "es_cl": f.get('es_chileno', False)
+        })
+
+    # Detección de consensos y discrepancias
+    discrepancias = []
+    coincidencias = []
+    if len(fuentes) >= 2:
+        fuentes_cl = [f for f in fuentes if f.get('es_chileno')]
+        if fuentes_cl:
+            coincidencias.append(f"Se priorizaron {len(fuentes_cl)} fuentes chilenas verificadas (.cl).")
+
+        palabras_clave = [set(re.findall(r'\b\w{4,}\b', t.lower())) for t in textos if t]
+        if len(palabras_clave) >= 2:
+            interseccion = palabras_clave[0].intersection(*palabras_clave[1:])
+            if len(interseccion) >= 2:
+                coincidencias.append(f"Consenso temático verificado en: {', '.join(list(interseccion)[:6])}.")
+
+    # Generar síntesis concisa estructurada
+    lineas_sintesis = []
+    for idx, f in enumerate(fuentes[:3], 1):
+        clean_snip = f.get('contenido_limpio', '')[:220].strip()
+        if clean_snip:
+            clean_snip = re.sub(r'\s+', ' ', clean_snip)
+            lineas_sintesis.append(f"{idx}. {f.get('titulo')}: {clean_snip}...")
+
+    sintesis_texto = "\n".join(lineas_sintesis) if lineas_sintesis else "Datos extraídos de fuentes web."
+
+    return {
+        "pregunta": pregunta,
+        "total_fuentes": len(fuentes),
+        "coincidencias": coincidencias,
+        "discrepancias": discrepancias,
+        "sintesis_concisa": sintesis_texto,
+        "fuentes_consultadas": urls[:4]
+    }
+
+
+def ejecutar_busqueda_resiliente(pregunta: str, max_intentos: int = 3) -> dict:
+    """
+    Ejecuta una investigación web resiliente y multi-intento.
+    Si la búsqueda inicial falla o queda vacía, muta la consulta para asegurar que
+    Vector no se quede en cola o bloqueado, explorando fuentes alternativas.
+    """
+    from .web_scraper import investigar_multisitio_chile, extraer_enlaces, obtener_contenido_pagina_web
+
+    # 1. Si la pregunta contiene enlaces directos, extraerlos de inmediato (estilo Copilot)
+    enlaces = extraer_enlaces(pregunta)
+    if enlaces:
+        url = enlaces[0]
+        info_directa = obtener_contenido_pagina_web(url, max_chars=3500)
+        return {
+            "estrategia": "enlace_directo",
+            "exito": True,
+            "fuentes": [{
+                "titulo": info_directa.get('titulo', 'Página Web'),
+                "url": url,
+                "contenido_limpio": info_directa.get('contenido', ''),
+                "fecha": info_directa.get('fecha', ''),
+                "es_chileno": ('.cl' in url)
+            }],
+            "total_fuentes": 1
+        }
+
+    # 2. Generar variaciones de consulta para reintento resiliente
+    queries_a_probar = [pregunta]
+    q_limpia = re.sub(r'[¿?¡!.,]', '', pregunta).strip()
+    q_sin_muletillas = re.sub(r'\b(?:busca|encuentra|investiga|dime|averigua|qué|que|cuál|cual|cómo|como)\b', '', q_limpia, flags=re.IGNORECASE).strip()
+    if q_sin_muletillas and q_sin_muletillas != q_limpia:
+        queries_a_probar.append(q_sin_muletillas)
+    queries_a_probar.append(f"{q_sin_muletillas or q_limpia} Chile noticias")
+
+    # 3. Probar secuencias hasta obtener resultados
+    for intento, q in enumerate(queries_a_probar[:max_intentos], 1):
+        res = investigar_multisitio_chile(q, max_fuentes=4)
+        if res.get('success') and res.get('fuentes'):
+            res['estrategia'] = f"intento_{intento}_exitoso"
+            res['query_utilizada'] = q
+            return res
+
+    # 4. Fallback final garantizado
+    return {
+        "estrategia": "sin_resultados_externos",
+        "exito": False,
+        "fuentes": [],
+        "total_fuentes": 0,
+        "query_utilizada": pregunta
+    }

@@ -1,0 +1,7 @@
+python-interpreter-path = "C:\\Users\\seba5\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
+search-path = ["."]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+disable-type-errors-in-ide = true
