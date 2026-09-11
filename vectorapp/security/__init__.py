@@ -1,6 +1,7 @@
 """
 Módulo de seguridad de VECTOR 2026.
-Proporciona validación AST, sandboxing, políticas de ruta, permisos de herramientas y manejo de límites.
+Proporciona validación AST, sandboxing, políticas de ruta, permisos de herramientas,
+manejo de límites y políticas de acción imparciales (sin autorización basada en personas).
 """
 
 from .exceptions import (
@@ -23,14 +24,16 @@ from .sandbox_policy import (
     TOOL_TIMEOUT_COMPLEX,
     TOOL_MAX_OUTPUT_BYTES,
 )
-from .user_profile import (
-    UserProfile,
-    UserRole,
-    resolve_user_profile,
-    creator_only,
+from .action_policy import (
+    require_action_confirmation,
     dangerous_endpoint,
+    creator_only,
     state_change_endpoint,
     read_only_endpoint,
+)
+from .user_profile import (
+    UserProfile,
+    resolve_user_profile,
 )
 
 __all__ = [
@@ -51,12 +54,11 @@ __all__ = [
     "TOOL_TIMEOUT_SIMPLE",
     "TOOL_TIMEOUT_COMPLEX",
     "TOOL_MAX_OUTPUT_BYTES",
-    "UserProfile",
-    "UserRole",
-    "resolve_user_profile",
-    "creator_only",
+    "require_action_confirmation",
     "dangerous_endpoint",
+    "creator_only",
     "state_change_endpoint",
     "read_only_endpoint",
+    "UserProfile",
+    "resolve_user_profile",
 ]
-

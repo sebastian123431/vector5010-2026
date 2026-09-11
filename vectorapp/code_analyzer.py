@@ -6,6 +6,7 @@ detectar errores y cuellos de botella, e indexar el conocimiento en la memoria d
 
 import os
 import sys
+from pathlib import Path
 import zipfile
 import ast
 import json
@@ -172,6 +173,15 @@ class ProjectCodeAnalyzer:
 
         target_dir = os.path.join(self.workspace_dir, project_name)
         os.makedirs(target_dir, exist_ok=True)
+        resolved_target_dir = Path(target_dir).resolve()
+
+        # 0. Validación de tamaño comprimido previo si zip_source es una ruta en disco
+        if isinstance(zip_source, (str, os.PathLike)) and os.path.exists(zip_source):
+            comp_sz = os.path.getsize(zip_source)
+            if comp_sz > MAX_ZIP_COMPRESSED_SIZE:
+                raise ZipBombViolation(
+                    f"El archivo ZIP ({comp_sz} bytes) excede la cuota de compresión ({MAX_ZIP_COMPRESSED_SIZE} bytes)."
+                )
 
         extracted_files = []
         total_uncompressed_size = 0
@@ -180,20 +190,27 @@ class ProjectCodeAnalyzer:
             with zipfile.ZipFile(zip_source, 'r') as zf:
                 members = zf.infolist()
 
-                # 1. Validación de cantidad máxima de archivos
+                # 1. Validación de cantidad máxima de archivos y tamaño comprimido acumulado
                 if len(members) > MAX_ZIP_FILES:
                     raise ZipBombViolation(
                         f"El archivo ZIP contiene {len(members)} entradas, excediendo el límite de {MAX_ZIP_FILES}."
                     )
 
+                total_comp_decl = sum(m.compress_size for m in members)
+                if total_comp_decl > MAX_ZIP_COMPRESSED_SIZE:
+                    raise ZipBombViolation(
+                        f"El tamaño comprimido declarado ({total_comp_decl} bytes) excede el límite de {MAX_ZIP_COMPRESSED_SIZE} bytes."
+                    )
+
                 for member in members:
                     filename = member.filename
 
-                    # 2. Protección estricta Zip Slip (evitar path traversal)
-                    target_path = os.path.abspath(os.path.join(target_dir, filename))
-                    if not target_path.startswith(os.path.abspath(target_dir)):
+                    # 2. Protección canónica Zip-Slip con Path.resolve e is_relative_to
+                    candidate_path = Path(target_dir, filename).resolve()
+                    if not candidate_path.is_relative_to(resolved_target_dir):
                         logger.warning(f"[ZipSecurity] Zip-Slip bloqueado para: {filename}")
                         continue
+                    target_path = str(candidate_path)
 
                     # 3. Validación de profundidad de directorios
                     parts = filename.replace('\\', '/').strip('/').split('/')
@@ -609,3 +626,8 @@ class ProjectCodeAnalyzer:
         md.append("💡 **Modo Copiloto Activo:** El proyecto ha sido asimilado en mi red sináptica. Puedes hacerme preguntas directamente sobre cualquiera de estos archivos, pedirme que repare los errores detectados o refactorizar cualquier función.")
 
         return "\n".join(md)
+
+
+# Alias de compatibilidad arquitectónica
+CodeAnalyzer = ProjectCodeAnalyzer
+

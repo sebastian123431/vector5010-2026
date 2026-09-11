@@ -171,7 +171,8 @@ class NumpyMemoryBackend(MemoryBackend):
 
 class FaissMemoryBackend(MemoryBackend):
     """
-    Backend vectorial acelerado por FAISS con fallback automático a NumpyMemoryBackend.
+    Backend vectorial acelerado por FAISS con soporte real de IndexFlatIP
+    y fallback automático transparente a NumpyMemoryBackend.
     """
 
     def __init__(self, dimension: int = 768, scorer: Optional[CompositeMemoryScorer] = None):
@@ -180,6 +181,8 @@ class FaissMemoryBackend(MemoryBackend):
         self.numpy_fallback = NumpyMemoryBackend(scorer=self.scorer)
         self.use_faiss = False
         self.index = None
+        self._faiss_ids: List[str] = []
+        self._items: Dict[str, MemoryItem] = {}
 
         try:
             import faiss
@@ -189,7 +192,22 @@ class FaissMemoryBackend(MemoryBackend):
             self.use_faiss = False
 
     def add(self, item: MemoryItem) -> str:
-        return self.numpy_fallback.add(item)
+        if not item.id:
+            item.id = str(uuid.uuid4())
+
+        self.numpy_fallback.add(item)
+
+        if self.use_faiss and self.index is not None:
+            self._items[item.id] = item
+            if item.vector is not None and len(item.vector) == self.dimension:
+                v = np.array(item.vector, dtype=np.float32).reshape(1, -1)
+                norm = np.linalg.norm(v)
+                if norm > 1e-6:
+                    v = v / norm
+                self.index.add(v)
+                self._faiss_ids.append(item.id)
+
+        return item.id
 
     def search(
         self,
@@ -200,21 +218,99 @@ class FaissMemoryBackend(MemoryBackend):
         session_id: Optional[str] = None,
         user_name: Optional[str] = None,
     ) -> List[Tuple[MemoryItem, float]]:
-        # Delega la búsqueda al motor NumPy que aplica puntuación compuesta y filtrado fino
-        return self.numpy_fallback.search(
-            query_vector=query_vector,
-            top_k=top_k,
-            min_score=min_score,
-            filter_type=filter_type,
-            session_id=session_id,
-            user_name=user_name,
-        )
+        if not self.use_faiss or self.index is None or getattr(self.index, "ntotal", 0) == 0:
+            return self.numpy_fallback.search(
+                query_vector=query_vector,
+                top_k=top_k,
+                min_score=min_score,
+                filter_type=filter_type,
+                session_id=session_id,
+                user_name=user_name,
+            )
+
+        # Búsqueda vectorial acelerada en el índice FAISS
+        try:
+            q = np.array(query_vector, dtype=np.float32).reshape(1, -1)
+            norm = np.linalg.norm(q)
+            if norm > 1e-6:
+                q = q / norm
+
+            k_fetch = min(max(top_k * 3, 10), self.index.ntotal)
+            distances, indices = self.index.search(q, k_fetch)
+
+            candidates = []
+            for sim, idx in zip(distances[0], indices[0]):
+                if idx < 0 or idx >= len(self._faiss_ids):
+                    continue
+                item_id = self._faiss_ids[idx]
+                item = self._items.get(item_id)
+                if not item:
+                    continue
+
+                if filter_type and item.memory_type != filter_type:
+                    continue
+                if session_id and item.session_id and item.session_id != session_id:
+                    continue
+                if user_name and item.user_name and item.user_name.lower() != user_name.lower():
+                    continue
+
+                score = self.scorer.score(item, float(sim))
+                if score >= min_score:
+                    candidates.append((item, score))
+
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            return candidates[:top_k]
+        except Exception:
+            return self.numpy_fallback.search(
+                query_vector=query_vector,
+                top_k=top_k,
+                min_score=min_score,
+                filter_type=filter_type,
+                session_id=session_id,
+                user_name=user_name,
+            )
 
     def delete(self, item_id: str) -> bool:
-        return self.numpy_fallback.delete(item_id)
+        deleted = self.numpy_fallback.delete(item_id)
+        if item_id in self._items:
+            del self._items[item_id]
+            # FAISS IndexFlatIP no soporta eliminación selectiva eficiente en memoria; reconstruir si es necesario
+            self._rebuild_faiss()
+            deleted = True
+        return deleted
+
+    def _rebuild_faiss(self):
+        if not self.use_faiss:
+            return
+        try:
+            import faiss
+            self.index = faiss.IndexFlatIP(self.dimension)
+            self._faiss_ids.clear()
+            for i_id, it in self._items.items():
+                if it.vector is not None and len(it.vector) == self.dimension:
+                    v = np.array(it.vector, dtype=np.float32).reshape(1, -1)
+                    norm = np.linalg.norm(v)
+                    if norm > 1e-6:
+                        v = v / norm
+                    self.index.add(v)
+                    self._faiss_ids.append(i_id)
+        except Exception:
+            pass
 
     def clear(self) -> int:
-        return self.numpy_fallback.clear()
+        n = len(self._items) if self.use_faiss else self.numpy_fallback.count()
+        self._items.clear()
+        self._faiss_ids.clear()
+        if self.use_faiss:
+            try:
+                import faiss
+                self.index = faiss.IndexFlatIP(self.dimension)
+            except Exception:
+                pass
+        self.numpy_fallback.clear()
+        return n
 
     def count(self) -> int:
+        if self.use_faiss and self._items:
+            return len(self._items)
         return self.numpy_fallback.count()

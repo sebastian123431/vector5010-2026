@@ -32,19 +32,37 @@ class CognitiveVerifier:
             }
         elif lang in ("python", "py"):
             try:
-                tree = ast.parse(code)
-                val_res = ASTSecurityValidator.validate(code)
+                validator = ASTSecurityValidator()
+                val_res = validator.validate_code(code)
+                syntax_valid = val_res.get("syntax_valid", False)
+                security_valid = val_res.get("security_valid", False)
+                violations = val_res.get("violations", [])
+                syntax_errors = [v for v in violations if v.get("rule") in ("SYNTAX_ERROR", "PARSE_ERROR")]
+                security_violations = [v for v in violations if v.get("rule") not in ("SYNTAX_ERROR", "PARSE_ERROR")]
                 return {
-                    "valid": val_res.is_valid,
+                    "valid": syntax_valid and security_valid,
                     "language": "python",
-                    "syntax_errors": [],
-                    "violations": [v.to_dict() for v in val_res.violations],
+                    "syntax_valid": syntax_valid,
+                    "security_valid": security_valid,
+                    "syntax_errors": syntax_errors,
+                    "violations": security_violations,
                 }
             except SyntaxError as se:
                 return {
                     "valid": False,
                     "language": "python",
-                    "syntax_errors": [{"line": se.lineno, "message": str(se)}],
+                    "syntax_valid": False,
+                    "security_valid": False,
+                    "syntax_errors": [{"line": getattr(se, 'lineno', 1), "message": str(se)}],
+                    "violations": [],
+                }
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "language": "python",
+                    "syntax_valid": False,
+                    "security_valid": False,
+                    "syntax_errors": [{"line": 1, "message": str(e)}],
                     "violations": [],
                 }
         return {"valid": True, "language": language, "syntax_errors": []}

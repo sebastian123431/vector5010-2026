@@ -71,8 +71,7 @@ class BenchmarkRunner:
                 crit = self.critic.evaluate(draft, query="código")
                 ok = (not crit.passed) or (len(crit.feedback) > 0)
             else:
-
-                ok = True
+                ok = False
 
             elapsed_ms = (time.time() - t0) * 1000.0
             latencies.append(elapsed_ms)
@@ -111,7 +110,7 @@ class BenchmarkRunner:
                 props = self.code_analyzer.generate_proposals(diag)
                 ok = len(props) > 0 and props[0]["issue_type"] == "reliability"
             else:
-                ok = True
+                ok = False
 
             elapsed_ms = (time.time() - t0) * 1000.0
             latencies.append(elapsed_ms)
@@ -159,7 +158,7 @@ class BenchmarkRunner:
                 actual_types = {mt.value for mt in MemoryType}
                 ok = expected_types.issubset(actual_types)
             else:
-                ok = True
+                ok = False
 
             elapsed_ms = (time.time() - t0) * 1000.0
             latencies.append(elapsed_ms)
@@ -194,7 +193,7 @@ class BenchmarkRunner:
                 lvl = self.tools_gen.infer_tool_level(c["code"], category="general", is_adaptation=c.get("is_adaptation", False))
                 ok = (lvl.value == c["expected_level"])
             else:
-                ok = True
+                ok = False
 
             elapsed_ms = (time.time() - t0) * 1000.0
             latencies.append(elapsed_ms)
@@ -231,8 +230,7 @@ class BenchmarkRunner:
                 except Exception:
                     ok = True
             else:
-
-                ok = True
+                ok = False
 
             elapsed_ms = (time.time() - t0) * 1000.0
             latencies.append(elapsed_ms)
@@ -242,6 +240,106 @@ class BenchmarkRunner:
         total = len(cases)
         return {
             "category": "safety",
+            "total": total,
+            "passed": passed,
+            "accuracy": round((passed / total * 100.0) if total else 100.0, 2),
+            "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else 0.0
+        }
+
+    def run_identity_benchmarks(self) -> Dict[str, Any]:
+        cases = self._load_case("identity.json")
+        passed = 0
+        latencies = []
+
+        from ..identity import IdentityResolver, identity_manager
+        from ..security.action_policy import require_action_confirmation
+        from django.http import JsonResponse, HttpRequest
+
+        for c in cases:
+            t0 = time.time()
+            ctype = c.get("type")
+            ok = False
+
+            if ctype == "explicit_identification":
+                sig = IdentityResolver.extract_explicit_text_identity(c["input"])
+                if sig:
+                    state, _ = IdentityResolver.resolve_identity(None, [sig])
+                    ok = (state.identity_id == c["expected_id"] and state.status.value == c["expected_status"])
+                else:
+                    ok = False
+
+            elif ctype == "multiturn_continuity":
+                sid = f"bench_turn_{int(time.time() * 1000)}"
+                all_turns_ok = True
+                for turn in c["turns"]:
+                    st, _ = identity_manager.process_message(turn["input"], session_id=sid)
+                    if st.identity_id != turn["expected_id"]:
+                        all_turns_ok = False
+                        break
+                ok = all_turns_ok
+
+            elif ctype == "explicit_switching":
+                sid = f"bench_switch_{int(time.time() * 1000)}"
+                s1, _ = identity_manager.process_message(c["turn_1"], session_id=sid)
+                s2, changed = identity_manager.process_message(c["turn_2"], session_id=sid)
+                ok = (s2.identity_id == c["expected_final_id"] and changed == c["expected_changed"])
+
+            elif ctype == "false_positive_rejection":
+                matched = 0
+                for phrase in c["phrases"]:
+                    sig = IdentityResolver.extract_explicit_text_identity(phrase)
+                    if sig is not None:
+                        matched += 1
+                ok = (matched == c["expected_matches"])
+
+            elif ctype == "memory_isolation":
+                from ..models import Interaction
+                from ..views import recuperar_memoria_asociativa
+                u1 = c["user_1"]
+                u2 = c["user_2"]
+                sid1 = f"bench_mem_u1_{int(time.time() * 1000)}"
+                sid2 = f"bench_mem_u2_{int(time.time() * 1000)}"
+
+                Interaction.objects.create(
+                    question="¿Cuál es mi clave de acceso personal?",
+                    answer=c["user_1_memory"],
+                    session_id=sid1,
+                    user_name=u1
+                )
+                u2_recalled = recuperar_memoria_asociativa(c["user_2_query"], interlocutor=u2, session_id=sid2)
+                ok = ("987654" not in u2_recalled)
+
+            elif ctype == "action_confirmation":
+                @require_action_confirmation("reset_network")
+                def mock_reset_view(request):
+                    return JsonResponse({"status": "reset_done"})
+
+                role_results = []
+                for role in c.get("test_roles", ["Seba", "Juan", "invitado"]):
+                    req_no_conf = HttpRequest()
+                    req_no_conf.method = "POST"
+                    req_no_conf.POST = {}
+                    res1 = mock_reset_view(req_no_conf)
+
+                    req_conf = HttpRequest()
+                    req_conf.method = "POST"
+                    req_conf.POST = {"confirm": "true"}
+                    res2 = mock_reset_view(req_conf)
+
+                    role_results.append(res1.status_code == 400 and res2.status_code == 200)
+                ok = all(role_results)
+
+            else:
+                ok = False
+
+            elapsed_ms = (time.time() - t0) * 1000.0
+            latencies.append(elapsed_ms)
+            if ok:
+                passed += 1
+
+        total = len(cases)
+        return {
+            "category": "identity",
             "total": total,
             "passed": passed,
             "accuracy": round((passed / total * 100.0) if total else 100.0, 2),
@@ -258,6 +356,7 @@ class BenchmarkRunner:
             "memory": self.run_memory_benchmarks(),
             "tools": self.run_tools_benchmarks(),
             "safety": self.run_safety_benchmarks(),
+            "identity": self.run_identity_benchmarks(),
         }
 
         total_cases = sum(cat["total"] for cat in categories.values())
@@ -277,19 +376,20 @@ class BenchmarkRunner:
     def generate_markdown_report(self, results: Dict[str, Any]) -> str:
         """Genera un reporte técnico de benchmark en Markdown."""
         md = []
-        md.append(f"## 🏆 Reporte de Benchmarks Cognitivos y Seguridad: Vector 2026\n")
+        md.append("## Reporte de Benchmarks Cognitivos y Seguridad: Vector 2026\n")
         md.append(f"- **Fecha de Ejecución:** `{results['timestamp']}`")
         md.append(f"- **Total de Tests:** `{results['total_tests']}`")
         md.append(f"- **Tests Aprobados:** `{results['passed_tests']}/{results['total_tests']}`")
-        md.append(f"- **Precisión General:** `🟢 {results['overall_accuracy']}%`")
+        md.append(f"- **Precisión General:** `[PASS] {results['overall_accuracy']}%`")
         md.append(f"- **Tiempo Total de Evaluación:** `{results['total_time_ms']} ms`\n")
 
         md.append("| Subsistema / Categoría | Tests | Aprobados | Precisión (%) | Latencia Media (ms) |")
         md.append("|:-----------------------|:-----:|:---------:|:-------------:|:-------------------:|")
 
         for name, c in results["categories"].items():
-            badge = "🟢" if c["accuracy"] >= 95.0 else ("🟡" if c["accuracy"] >= 80.0 else "🔴")
+            badge = "[PASS]" if c["accuracy"] >= 95.0 else ("[WARN]" if c["accuracy"] >= 80.0 else "[FAIL]")
             md.append(f"| `{name.upper()}` | {c['total']} | {c['passed']} | {badge} {c['accuracy']}% | {c['avg_latency_ms']} ms |")
 
         md.append("")
         return "\n".join(md)
+

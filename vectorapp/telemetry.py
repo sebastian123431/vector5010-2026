@@ -31,6 +31,11 @@ class QueryTelemetryRecord:
     cache_hit: bool = False
     status: str = "success"  # "success", "error", "blocked"
     error_message: Optional[str] = None
+    identity_source: str = "unknown"
+    identity_confidence: float = 1.0
+    route: str = "tier_0"
+    complexity: str = "simple"
+    sandbox_blocks: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -64,9 +69,27 @@ class TelemetryManager:
         planner_steps: int = 0,
         cache_hit: bool = False,
         status: str = "success",
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        identity_source: str = "unknown",
+        identity_confidence: float = 1.0,
+        route: str = "tier_0",
+        complexity: Optional[str] = None,
+        sandbox_blocks: int = 0
     ) -> QueryTelemetryRecord:
-        """Registra una consulta en el buffer de telemetría."""
+        """
+        Registra una consulta en el buffer de telemetría.
+        Garantiza privacidad estricta: jamás registra biometría en bruto ni credenciales privadas.
+        """
+        if complexity is None:
+            if complexity_score <= 0.20:
+                complexity = "simple"
+            elif complexity_score <= 0.45:
+                complexity = "moderate"
+            elif complexity_score <= 0.74:
+                complexity = "complex"
+            else:
+                complexity = "intensive"
+
         record = QueryTelemetryRecord(
             query_id=query_id,
             timestamp=datetime.now().isoformat(),
@@ -78,7 +101,12 @@ class TelemetryManager:
             planner_steps=planner_steps,
             cache_hit=cache_hit,
             status=status,
-            error_message=error_message
+            error_message=error_message,
+            identity_source=identity_source,
+            identity_confidence=round(float(identity_confidence), 4),
+            route=route,
+            complexity=complexity,
+            sandbox_blocks=sandbox_blocks
         )
 
         with self._lock:
@@ -111,16 +139,22 @@ class TelemetryManager:
                     "complex": 0,
                     "intensive": 0
                 },
-                "total_tools_invoked": 0
+                "total_tools_invoked": 0,
+                "total_sandbox_blocks": 0,
+                "identity_source_distribution": {},
+                "route_distribution": {}
             }
 
         total_latency = sum(r.latency_ms for r in records)
         cache_hits = sum(1 for r in records if r.cache_hit)
         errors = sum(1 for r in records if r.status == "error")
         all_tools = sum(len(r.tools_invoked) for r in records)
+        total_sandbox_blocks = sum(r.sandbox_blocks for r in records)
 
-        # Distribución de intenciones
+        # Distribuciones agregadas
         intents = Counter(r.intent for r in records)
+        identity_sources = Counter(r.identity_source for r in records)
+        routes = Counter(r.route for r in records)
 
         # Distribución de complejidad
         complexity_counts = {"simple": 0, "moderate": 0, "complex": 0, "intensive": 0}
@@ -141,8 +175,11 @@ class TelemetryManager:
             "cache_hit_rate": round(cache_hits / total, 4),
             "error_rate": round(errors / total, 4),
             "intent_distribution": dict(intents),
+            "identity_source_distribution": dict(identity_sources),
+            "route_distribution": dict(routes),
             "complexity_distribution": complexity_counts,
-            "total_tools_invoked": all_tools
+            "total_tools_invoked": all_tools,
+            "total_sandbox_blocks": total_sandbox_blocks
         }
 
     def clear(self):

@@ -68,6 +68,19 @@ class CognitiveCritic:
             feedback.append("La respuesta contiene frases genéricas de limitación no acordes con las capacidades de Vector.")
             suggestions.append("Responder de forma asertiva utilizando las herramientas del sistema.")
 
+        # 5. Respuestas truncadas o incompletas (terminadas abruptamente)
+        if resp_clean.endswith(("...", "…")) and len(resp_clean) > 200:
+            score -= 0.15
+            feedback.append("La respuesta parece haber quedado inconclusa o truncada con puntos suspensivos.")
+            suggestions.append("Completar el razonamiento o cerrar el párrafo de conclusión.")
+
+        # 6. Detección de contradicciones evidentes ("no sé" pero luego responde con detalle)
+        lower_r = resp_clean.lower()
+        if ("no tengo información" in lower_r or "desconozco" in lower_r) and len(resp_clean) > 400:
+            score -= 0.15
+            feedback.append("Contradicción detectada: se afirma no tener información pero se expone un texto extenso.")
+            suggestions.append("Alinear la asertividad inicial con el cuerpo de la respuesta.")
+
         score = max(0.0, min(1.0, round(score, 2)))
         passed = score >= 0.70
 

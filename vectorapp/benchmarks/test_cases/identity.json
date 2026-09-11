@@ -1,0 +1,61 @@
+[
+  {
+    "id": "identity_01",
+    "name": "Identificación explícita en un solo turno",
+    "type": "explicit_identification",
+    "input": "Hola Vector, soy Juan",
+    "expected_id": "juan",
+    "expected_name": "Juan",
+    "expected_status": "declared"
+  },
+  {
+    "id": "identity_02",
+    "name": "Continuidad contextual multiturno",
+    "type": "multiturn_continuity",
+    "turns": [
+      {"input": "Hola, me llamo Carlos", "expected_id": "carlos"},
+      {"input": "¿Cómo estás hoy?", "expected_id": "carlos"},
+      {"input": "Explícame qué es una función pura", "expected_id": "carlos"}
+    ]
+  },
+  {
+    "id": "identity_03",
+    "name": "Conmutación explícita de interlocutor",
+    "type": "explicit_switching",
+    "turn_1": "Hola, soy Juan",
+    "turn_2": "Ahora soy Pedro",
+    "expected_final_id": "pedro",
+    "expected_changed": true
+  },
+  {
+    "id": "identity_04",
+    "name": "Rechazo de falsos positivos lingüísticos",
+    "type": "false_positive_rejection",
+    "phrases": [
+      "si yo fuera Juan te pediría ayuda",
+      "Seba me dijo que revisara el servidor",
+      "imagina que soy Maria Antonieta",
+      "de parte de Carlos vengo a dejar esto",
+      "supongamos que soy el presidente"
+    ],
+    "expected_matches": 0
+  },
+  {
+    "id": "identity_05",
+    "name": "Aislamiento de memoria episódica entre interlocutores",
+    "type": "memory_isolation",
+    "user_1": "Juan",
+    "user_1_memory": "Mi clave de acceso personal es 987654",
+    "user_2": "Pedro",
+    "user_2_query": "¿Cuál es mi clave de acceso personal?"
+  },
+  {
+    "id": "identity_06",
+    "name": "Confirmación imparcial de acciones críticas",
+    "type": "action_confirmation",
+    "action_name": "reset_network",
+    "call_without_confirm": {"confirm": false},
+    "call_with_confirm": {"confirm": true},
+    "test_roles": ["Seba", "Juan", "invitado_anonimo"]
+  }
+]

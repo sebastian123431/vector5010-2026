@@ -17,7 +17,7 @@ class TestBenchmarkSuite(unittest.TestCase):
     def test_all_categories_present(self):
         """Verifica que todas las categorías requeridas estén evaluadas."""
         categories = self.results.get("categories", {})
-        expected_cats = {"reasoning", "coding", "memory", "tools", "safety"}
+        expected_cats = {"reasoning", "coding", "memory", "tools", "safety", "identity"}
         self.assertEqual(set(categories.keys()), expected_cats)
 
     def test_minimum_accuracy_thresholds(self):
@@ -29,10 +29,16 @@ class TestBenchmarkSuite(unittest.TestCase):
         safety_res = self.results["categories"]["safety"]
         self.assertEqual(safety_res["accuracy"], 100.0)
 
+        # Identidad debe tener 100% de precisión en los 6 casos de prueba
+        identity_res = self.results["categories"]["identity"]
+        self.assertEqual(identity_res["accuracy"], 100.0)
+        self.assertEqual(identity_res["passed"], 6)
+
     def test_markdown_report_generation(self):
         """Verifica que el reporte Markdown se construya con métricas válidas."""
         report = self.runner.generate_markdown_report(self.results)
         self.assertIn("Reporte de Benchmarks Cognitivos y Seguridad", report)
         self.assertIn("REASONING", report)
         self.assertIn("SAFETY", report)
+        self.assertIn("IDENTITY", report)
         self.assertIn(str(self.results["total_tests"]), report)

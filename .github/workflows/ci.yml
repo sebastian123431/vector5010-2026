@@ -1,0 +1,46 @@
+name: Vector 2026 CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    name: Test Suite & Security Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Django System Check
+        run: |
+          python manage.py check
+
+      - name: Run Django Migrations (SQLite Test DB)
+        run: |
+          python manage.py migrate --noinput
+
+      - name: Run Full Test Suite
+        env:
+          DJANGO_SETTINGS_MODULE: vector5010.settings
+        run: |
+          python manage.py test tests/ --verbosity=2

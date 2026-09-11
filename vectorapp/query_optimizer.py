@@ -264,9 +264,28 @@ class QueryOptimizer:
                 metadata={"fast_path": True}
             )
 
-        # Nivel 1: Clasificación semántica y complejidad continua
+        # Nivel 1 & 2: Clasificación semántica y resolución de ambigüedad
         intent, confidence = self.classify_intent(q)
         score = self.calculate_complexity_score(q)
+
+        # Nivel 2: Para consultas ambiguas (baja confianza <0.60) o de alta complejidad estructural
+        tier = 1
+        if confidence < 0.60 or (score > 0.70 and intent == IntentCategory.REASONING):
+            tier = 2
+            # Desambiguación semántica profunda
+            q_lower = q.lower()
+            if any(w in q_lower for w in ("función", "clase", "método", "variable", "error", "bug", "optimizar", "script")):
+                intent = IntentCategory.CODING
+                confidence = 0.80
+            elif any(w in q_lower for w in ("archivo", "carpeta", "directorio", "zip", "proyecto", "repositorio")):
+                intent = IntentCategory.PROJECT_ANALYSIS
+                confidence = 0.85
+            elif any(w in q_lower for w in ("recuerda", "memoria", "antes", "ayer", "dijiste")):
+                intent = IntentCategory.MEMORY
+                confidence = 0.80
+            else:
+                intent = IntentCategory.REASONING
+                confidence = 0.70
 
         # Mapeo score -> QueryComplexity
         if score <= 0.20:
@@ -289,11 +308,11 @@ class QueryOptimizer:
             route=intent,
             complexity=complexity,
             complexity_score=score,
-            tier=1,
+            tier=tier,
             confidence=confidence,
             suggested_config=cfg,
             fast_response=None,
-            metadata={"classified_intent": intent.value}
+            metadata={"classified_intent": intent.value, "tier": tier}
         )
 
     def get_processing_config(self, complexity: QueryComplexity) -> Dict[str, Any]:

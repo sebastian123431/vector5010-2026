@@ -41,10 +41,22 @@ class MemoryLearning:
     def __init__(self, backend: Optional[NumpyMemoryBackend] = None):
         self.backend = backend or NumpyMemoryBackend()
 
+    def _compute_vector(self, text: str) -> Optional[List[float]]:
+        try:
+            from vectorapp.embeddings import _EMBEDDINGS
+            v = _EMBEDDINGS.embed_query(text[:300])
+            if v and len(v) == 768:
+                return [float(x) for x in v]
+        except Exception:
+            pass
+        return None
+
     def learn_fact(self, content: str, importance: float = 0.8, user_name: str = "", session_id: str = "") -> str:
+        vec = self._compute_vector(content)
         item = MemoryItem(
             id="",
             content=content,
+            vector=vec,
             memory_type=MemoryType.SEMANTIC,
             importance=importance,
             confidence=0.95,
@@ -55,9 +67,11 @@ class MemoryLearning:
 
     def learn_episode(self, question: str, answer: str, user_name: str = "", session_id: str = "") -> str:
         snippet = f"Q: {question}\nA: {answer[:400]}"
+        vec = self._compute_vector(snippet)
         item = MemoryItem(
             id="",
             content=snippet,
+            vector=vec,
             memory_type=MemoryType.EPISODIC,
             importance=0.5,
             confidence=0.9,

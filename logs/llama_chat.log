@@ -22259,3 +22259,348 @@
 0.03.726.753 I slot print_timing: id  3 | task 0 |       total time =    2068.77 ms /   255 tokens
 0.03.726.754 I slot print_timing: id  3 | task 0 |    graphs reused =        250
 0.03.726.775 I slot      release: id  3 | task 0 | stop processing: n_tokens = 254, truncated = 0
+0.00.217.378 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.217.779 W srv  llama_server: -----------------
+0.00.217.781 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.217.783 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.217.783 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.217.783 W srv  llama_server: -----------------
+0.00.221.720 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.095.741 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.842.802 I cmn          init: llama threadpool init, n_threads = 6
+0.01.980.118 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.02.003.578 I srv  llama_server: model loaded
+0.02.003.584 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.371.160 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.371.644 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.03.539.519 I slot print_timing: id  3 | task 0 | prompt eval time =      30.87 ms /     4 tokens (    7.72 ms per token,   129.58 tokens per second)
+0.03.539.526 I slot print_timing: id  3 | task 0 |        eval time =    1136.74 ms /   134 tokens (    8.55 ms per token,   117.00 tokens per second)
+0.03.539.527 I slot print_timing: id  3 | task 0 |       total time =    1167.61 ms /   138 tokens
+0.03.539.528 I slot print_timing: id  3 | task 0 |    graphs reused =        133
+0.03.539.878 I slot      release: id  3 | task 0 | stop processing: n_tokens = 137, truncated = 0
+0.00.125.908 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.126.247 W srv  llama_server: -----------------
+0.00.126.252 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.126.254 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.126.254 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.126.254 W srv  llama_server: -----------------
+0.00.142.088 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.00.931.643 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.439.150 I cmn          init: llama threadpool init, n_threads = 6
+0.01.491.610 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.496.452 I srv  llama_server: model loaded
+0.01.496.460 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.606.377 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.606.462 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.04.623.039 I slot print_timing: id  3 | task 0 | n_gen =    355, tg = 117.96 t/s, tg_3s = 118.30 t/s
+0.07.628.613 I slot print_timing: id  3 | task 0 | n_gen =    709, tg = 117.87 t/s, tg_3s = 117.78 t/s
+0.08.134.450 I slot print_timing: id  3 | task 0 | prompt eval time =      15.59 ms /     4 tokens (    3.90 ms per token,   256.62 tokens per second)
+0.08.134.457 I slot print_timing: id  3 | task 0 |        eval time =    6512.33 ms /   768 tokens (    8.49 ms per token,   117.78 tokens per second)
+0.08.134.458 I slot print_timing: id  3 | task 0 |       total time =    6527.92 ms /   772 tokens
+0.08.134.459 I slot print_timing: id  3 | task 0 |    graphs reused =        764
+0.08.134.480 I slot      release: id  3 | task 0 | stop processing: n_tokens = 771, truncated = 0
+0.00.206.810 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.207.147 W srv  llama_server: -----------------
+0.00.207.152 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.207.153 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.207.153 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.207.154 W srv  llama_server: -----------------
+0.00.217.302 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.053.415 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.574.524 I cmn          init: llama threadpool init, n_threads = 6
+0.01.624.656 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.629.657 I srv  llama_server: model loaded
+0.01.629.663 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.002.711 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.002.790 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.05.018.068 I slot print_timing: id  3 | task 0 | n_gen =    356, tg = 118.32 t/s, tg_3s = 118.65 t/s
+0.08.023.427 I slot print_timing: id  3 | task 0 | n_gen =    709, tg = 117.89 t/s, tg_3s = 117.46 t/s
+0.09.981.364 I slot print_timing: id  3 | task 0 | prompt eval time =      14.81 ms /     4 tokens (    3.70 ms per token,   270.05 tokens per second)
+0.09.981.372 I slot print_timing: id  3 | task 0 |        eval time =    7963.71 ms /   939 tokens (    8.49 ms per token,   117.78 tokens per second)
+0.09.981.373 I slot print_timing: id  3 | task 0 |       total time =    7978.52 ms /   943 tokens
+0.09.981.374 I slot print_timing: id  3 | task 0 |    graphs reused =        935
+0.09.981.401 I slot      release: id  3 | task 0 | stop processing: n_tokens = 942, truncated = 0
+0.00.543.465 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.543.808 W srv  llama_server: -----------------
+0.00.543.813 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.543.815 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.543.815 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.543.816 W srv  llama_server: -----------------
+0.00.552.099 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.285.428 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.775.802 I cmn          init: llama threadpool init, n_threads = 6
+0.01.827.657 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.832.494 I srv  llama_server: model loaded
+0.01.832.500 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.146.399 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.146.466 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.05.164.081 I slot print_timing: id  3 | task 0 | n_gen =    363, tg = 120.57 t/s, tg_3s = 120.90 t/s
+0.08.164.689 I slot print_timing: id  3 | task 0 | n_gen =    723, tg = 120.27 t/s, tg_3s = 119.98 t/s
+0.09.731.923 I slot print_timing: id  3 | task 0 | prompt eval time =      15.14 ms /     4 tokens (    3.78 ms per token,   264.24 tokens per second)
+0.09.731.930 I slot print_timing: id  3 | task 0 |        eval time =    7570.26 ms /   910 tokens (    8.33 ms per token,   120.08 tokens per second)
+0.09.731.931 I slot print_timing: id  3 | task 0 |       total time =    7585.40 ms /   914 tokens
+0.09.731.932 I slot print_timing: id  3 | task 0 |    graphs reused =        906
+0.09.731.958 I slot      release: id  3 | task 0 | stop processing: n_tokens = 913, truncated = 0
+0.06.229.957 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.06.230.430 W srv  llama_server: -----------------
+0.06.230.432 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.06.230.434 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.06.230.435 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.06.230.436 W srv  llama_server: -----------------
+0.06.243.026 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.09.728.384 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.10.302.329 I cmn          init: llama threadpool init, n_threads = 6
+0.10.353.789 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.10.358.500 I srv  llama_server: model loaded
+0.10.358.506 I srv  llama_server: listening on http://127.0.0.1:8001
+0.10.632.705 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.10.632.790 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+565.08.768.269 I slot print_timing: id  3 | task 0 | n_gen =    196, tg =   0.01 t/s, tg_3s =   0.01 t/s
+565.11.776.536 I slot print_timing: id  3 | task 0 | n_gen =    376, tg =   0.01 t/s, tg_3s =  59.83 t/s
+565.13.642.962 I slot print_timing: id  3 | task 0 | prompt eval time =      16.48 ms /     4 tokens (    4.12 ms per token,   242.72 tokens per second)
+565.13.642.968 I slot print_timing: id  3 | task 0 |        eval time = 33903011.21 ms /   545 tokens (62321.71 ms per token,     0.02 tokens per second)
+565.13.642.969 I slot print_timing: id  3 | task 0 |       total time = 33903027.69 ms /   549 tokens
+565.13.642.971 I slot print_timing: id  3 | task 0 |    graphs reused =        542
+565.13.643.361 I slot      release: id  3 | task 0 | stop processing: n_tokens = 548, truncated = 0
+0.00.182.715 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.183.107 W srv  llama_server: -----------------
+0.00.183.112 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.183.114 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.183.114 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.183.114 W srv  llama_server: -----------------
+0.00.196.084 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.051.149 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.597.480 I cmn          init: llama threadpool init, n_threads = 6
+0.01.650.447 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.655.484 I srv  llama_server: model loaded
+0.01.655.491 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.963.156 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.963.226 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.04.980.034 I slot print_timing: id  3 | task 0 | n_gen =    365, tg = 121.27 t/s, tg_3s = 121.61 t/s
+0.05.202.962 I slot print_timing: id  3 | task 0 | prompt eval time =      15.29 ms /     4 tokens (    3.82 ms per token,   261.64 tokens per second)
+0.05.202.969 I slot print_timing: id  3 | task 0 |        eval time =    3224.40 ms /   392 tokens (    8.25 ms per token,   121.26 tokens per second)
+0.05.202.970 I slot print_timing: id  3 | task 0 |       total time =    3239.68 ms /   396 tokens
+0.05.202.971 I slot print_timing: id  3 | task 0 |    graphs reused =        390
+0.05.202.995 I slot      release: id  3 | task 0 | stop processing: n_tokens = 395, truncated = 0
+0.00.204.361 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.204.704 W srv  llama_server: -----------------
+0.00.204.708 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.204.710 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.204.710 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.204.711 W srv  llama_server: -----------------
+0.00.217.936 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.006.633 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.509.419 I cmn          init: llama threadpool init, n_threads = 6
+0.01.561.518 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.566.254 I srv  llama_server: model loaded
+0.01.566.260 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.629.209 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.629.288 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.02.749.567 I slot print_timing: id  3 | task 0 | prompt eval time =      15.60 ms /     4 tokens (    3.90 ms per token,   256.34 tokens per second)
+0.02.749.574 I slot print_timing: id  3 | task 0 |        eval time =    1104.62 ms /   132 tokens (    8.43 ms per token,   118.59 tokens per second)
+0.02.749.575 I slot print_timing: id  3 | task 0 |       total time =    1120.23 ms /   136 tokens
+0.02.749.576 I slot print_timing: id  3 | task 0 |    graphs reused =        131
+0.02.749.596 I slot      release: id  3 | task 0 | stop processing: n_tokens = 135, truncated = 0
+0.00.178.245 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.178.608 W srv  llama_server: -----------------
+0.00.178.612 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.178.613 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.178.614 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.178.614 W srv  llama_server: -----------------
+0.00.194.546 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.00.928.515 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.420.240 I cmn          init: llama threadpool init, n_threads = 6
+0.01.487.250 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.492.357 I srv  llama_server: model loaded
+0.01.492.364 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.648.987 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.649.062 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.02.624.314 I slot print_timing: id  3 | task 0 | prompt eval time =      15.57 ms /     4 tokens (    3.89 ms per token,   256.90 tokens per second)
+0.02.624.322 I slot print_timing: id  3 | task 0 |        eval time =     959.63 ms /   115 tokens (    8.42 ms per token,   118.80 tokens per second)
+0.02.624.323 I slot print_timing: id  3 | task 0 |       total time =     975.20 ms /   119 tokens
+0.02.624.324 I slot print_timing: id  3 | task 0 |    graphs reused =        114
+0.02.624.350 I slot      release: id  3 | task 0 | stop processing: n_tokens = 118, truncated = 0
+0.00.644.907 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.645.239 W srv  llama_server: -----------------
+0.00.645.244 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.645.245 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.645.246 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.645.246 W srv  llama_server: -----------------
+0.00.647.207 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.394.217 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.863.401 I cmn          init: llama threadpool init, n_threads = 6
+0.01.913.032 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.917.682 I srv  llama_server: model loaded
+0.01.917.689 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.135.381 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.135.453 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.05.156.779 I slot print_timing: id  3 | task 0 | n_gen =    367, tg = 121.75 t/s, tg_3s = 122.08 t/s
+0.05.663.581 I slot print_timing: id  3 | task 0 | prompt eval time =      15.15 ms /     4 tokens (    3.79 ms per token,   264.04 tokens per second)
+0.05.663.588 I slot print_timing: id  3 | task 0 |        eval time =    3512.93 ms /   428 tokens (    8.23 ms per token,   121.55 tokens per second)
+0.05.663.589 I slot print_timing: id  3 | task 0 |       total time =    3528.08 ms /   432 tokens
+0.05.663.590 I slot print_timing: id  3 | task 0 |    graphs reused =        426
+0.05.663.613 I slot      release: id  3 | task 0 | stop processing: n_tokens = 431, truncated = 0
+0.00.666.209 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.666.552 W srv  llama_server: -----------------
+0.00.666.557 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.666.559 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.666.559 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.666.560 W srv  llama_server: -----------------
+0.00.673.559 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.817.473 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.02.295.388 I cmn          init: llama threadpool init, n_threads = 6
+0.02.347.226 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.02.351.869 I srv  llama_server: model loaded
+0.02.351.875 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.569.576 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.569.649 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.05.593.610 I slot print_timing: id  3 | task 0 | n_gen =    368, tg = 122.11 t/s, tg_3s = 122.45 t/s
+0.08.598.936 I slot print_timing: id  3 | task 0 | n_gen =    733, tg = 121.78 t/s, tg_3s = 121.45 t/s
+0.09.161.254 I slot print_timing: id  3 | task 0 | prompt eval time =      18.54 ms /     4 tokens (    4.64 ms per token,   215.73 tokens per second)
+0.09.161.260 I slot print_timing: id  3 | task 0 |        eval time =    6573.01 ms /   799 tokens (    8.24 ms per token,   121.41 tokens per second)
+0.09.161.261 I slot print_timing: id  3 | task 0 |       total time =    6591.56 ms /   803 tokens
+0.09.161.261 I slot print_timing: id  3 | task 0 |    graphs reused =        795
+0.09.161.281 I slot      release: id  3 | task 0 | stop processing: n_tokens = 802, truncated = 0
+0.00.658.896 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.659.234 W srv  llama_server: -----------------
+0.00.659.239 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.659.240 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.659.241 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.659.241 W srv  llama_server: -----------------
+0.00.666.359 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.403.498 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.874.799 I cmn          init: llama threadpool init, n_threads = 6
+0.01.929.304 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.934.586 I srv  llama_server: model loaded
+0.01.934.593 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.128.637 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.128.700 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.05.149.626 I slot print_timing: id  3 | task 0 | n_gen =    366, tg = 121.42 t/s, tg_3s = 121.75 t/s
+0.07.762.073 I slot print_timing: id  3 | task 0 | prompt eval time =      14.68 ms /     4 tokens (    3.67 ms per token,   272.48 tokens per second)
+0.07.762.080 I slot print_timing: id  3 | task 0 |        eval time =    5618.65 ms /   682 tokens (    8.25 ms per token,   121.20 tokens per second)
+0.07.762.080 I slot print_timing: id  3 | task 0 |       total time =    5633.33 ms /   686 tokens
+0.07.762.081 I slot print_timing: id  3 | task 0 |    graphs reused =        679
+0.07.762.101 I slot      release: id  3 | task 0 | stop processing: n_tokens = 685, truncated = 0
+0.00.664.049 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.664.379 W srv  llama_server: -----------------
+0.00.664.384 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.664.385 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.664.386 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.664.386 W srv  llama_server: -----------------
+0.00.668.378 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.439.357 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.949.688 I cmn          init: llama threadpool init, n_threads = 6
+0.02.002.697 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.02.007.367 I srv  llama_server: model loaded
+0.02.007.372 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.098.660 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.098.728 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.02.967.362 I slot print_timing: id  3 | task 0 | prompt eval time =      15.51 ms /     4 tokens (    3.88 ms per token,   257.90 tokens per second)
+0.02.967.368 I slot print_timing: id  3 | task 0 |        eval time =     853.07 ms /   101 tokens (    8.53 ms per token,   117.22 tokens per second)
+0.02.967.369 I slot print_timing: id  3 | task 0 |       total time =     868.58 ms /   105 tokens
+0.02.967.370 I slot print_timing: id  3 | task 0 |    graphs reused =        100
+0.02.967.412 I slot      release: id  3 | task 0 | stop processing: n_tokens = 104, truncated = 0
+0.00.324.822 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.325.154 W srv  llama_server: -----------------
+0.00.325.158 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.325.160 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.325.160 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.325.160 W srv  llama_server: -----------------
+0.00.333.719 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.01.144.208 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.646.549 I cmn          init: llama threadpool init, n_threads = 6
+0.01.699.012 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.703.803 I srv  llama_server: model loaded
+0.01.703.811 I srv  llama_server: listening on http://127.0.0.1:8001
+0.02.007.601 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.02.007.706 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.05.024.510 I slot print_timing: id  3 | task 0 | n_gen =    359, tg = 119.33 t/s, tg_3s = 119.67 t/s
+0.06.504.776 I slot print_timing: id  3 | task 0 | prompt eval time =      16.75 ms /     4 tokens (    4.19 ms per token,   238.82 tokens per second)
+0.06.504.783 I slot print_timing: id  3 | task 0 |        eval time =    4480.27 ms /   537 tokens (    8.36 ms per token,   119.64 tokens per second)
+0.06.504.784 I slot print_timing: id  3 | task 0 |       total time =    4497.02 ms /   541 tokens
+0.06.504.785 I slot print_timing: id  3 | task 0 |    graphs reused =        534
+0.06.504.805 I slot      release: id  3 | task 0 | stop processing: n_tokens = 540, truncated = 0
+0.00.194.996 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.195.330 W srv  llama_server: -----------------
+0.00.195.335 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.195.336 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.195.337 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.195.337 W srv  llama_server: -----------------
+0.00.206.229 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.00.956.530 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.445.838 I cmn          init: llama threadpool init, n_threads = 6
+0.01.494.900 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.499.419 I srv  llama_server: model loaded
+0.01.499.425 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.601.630 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.601.707 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.04.617.429 I slot print_timing: id  3 | task 0 | n_gen =    364, tg = 120.98 t/s, tg_3s = 121.31 t/s
+0.07.621.644 I slot print_timing: id  3 | task 0 | n_gen =    725, tg = 120.57 t/s, tg_3s = 120.17 t/s
+0.08.230.379 I slot print_timing: id  3 | task 0 | prompt eval time =      15.20 ms /     4 tokens (    3.80 ms per token,   263.24 tokens per second)
+0.08.230.390 I slot print_timing: id  3 | task 0 |        eval time =    6613.42 ms /   796 tokens (    8.32 ms per token,   120.21 tokens per second)
+0.08.230.391 I slot print_timing: id  3 | task 0 |       total time =    6628.62 ms /   800 tokens
+0.08.230.393 I slot print_timing: id  3 | task 0 |    graphs reused =        792
+0.08.230.429 I slot      release: id  3 | task 0 | stop processing: n_tokens = 799, truncated = 0
+0.00.107.992 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.108.344 W srv  llama_server: -----------------
+0.00.108.349 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.108.350 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.108.351 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.108.351 W srv  llama_server: -----------------
+0.00.114.342 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.00.868.864 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.365.717 I cmn          init: llama threadpool init, n_threads = 6
+0.01.421.886 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.426.933 I srv  llama_server: model loaded
+0.01.426.940 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.652.502 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.652.571 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.04.674.298 I slot print_timing: id  3 | task 0 | n_gen =    363, tg = 120.41 t/s, tg_3s = 120.74 t/s
+0.07.680.654 I slot print_timing: id  3 | task 0 | n_gen =    723, tg = 120.08 t/s, tg_3s = 119.75 t/s
+0.08.488.600 I slot print_timing: id  3 | task 0 | prompt eval time =      15.33 ms /     4 tokens (    3.83 ms per token,   260.91 tokens per second)
+0.08.488.607 I slot print_timing: id  3 | task 0 |        eval time =    6820.65 ms /   819 tokens (    8.34 ms per token,   119.93 tokens per second)
+0.08.488.608 I slot print_timing: id  3 | task 0 |       total time =    6835.98 ms /   823 tokens
+0.08.488.610 I slot print_timing: id  3 | task 0 |    graphs reused =        815
+0.08.488.634 I slot      release: id  3 | task 0 | stop processing: n_tokens = 822, truncated = 0
+0.00.194.607 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.194.932 W srv  llama_server: -----------------
+0.00.194.937 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.194.938 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.194.939 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.194.939 W srv  llama_server: -----------------
+0.00.197.773 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.00.950.387 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.437.422 I cmn          init: llama threadpool init, n_threads = 6
+0.01.485.560 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.491.260 I srv  llama_server: model loaded
+0.01.491.267 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.629.037 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.629.106 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.04.649.874 I slot print_timing: id  3 | task 0 | n_gen =    364, tg = 120.77 t/s, tg_3s = 121.10 t/s
+0.07.657.209 I slot print_timing: id  3 | task 0 | n_gen =    724, tg = 120.24 t/s, tg_3s = 119.71 t/s
+0.08.499.485 I slot print_timing: id  3 | task 0 | prompt eval time =      14.90 ms /     4 tokens (    3.72 ms per token,   268.47 tokens per second)
+0.08.499.492 I slot print_timing: id  3 | task 0 |        eval time =    6855.43 ms /   824 tokens (    8.33 ms per token,   120.05 tokens per second)
+0.08.499.493 I slot print_timing: id  3 | task 0 |       total time =    6870.33 ms /   828 tokens
+0.08.499.494 I slot print_timing: id  3 | task 0 |    graphs reused =        820
+0.08.499.515 I slot      release: id  3 | task 0 | stop processing: n_tokens = 827, truncated = 0
+0.00.173.581 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.173.898 W srv  llama_server: -----------------
+0.00.173.902 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.173.903 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.173.904 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.173.904 W srv  llama_server: -----------------
+0.00.190.858 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\gemma-3-1b-it-Q4_K_M.gguf'
+0.00.971.171 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.459.912 I cmn          init: llama threadpool init, n_threads = 6
+0.01.509.666 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
+0.01.514.622 I srv  llama_server: model loaded
+0.01.514.628 I srv  llama_server: listening on http://127.0.0.1:8001
+0.01.638.765 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.01.638.858 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.04.657.821 I slot print_timing: id  3 | task 0 | n_gen =    359, tg = 119.18 t/s, tg_3s = 119.51 t/s
+0.07.661.185 I slot print_timing: id  3 | task 0 | n_gen =    718, tg = 119.35 t/s, tg_3s = 119.53 t/s
+0.09.231.340 I slot print_timing: id  3 | task 0 | prompt eval time =      14.99 ms /     4 tokens (    3.75 ms per token,   266.84 tokens per second)
+0.09.231.347 I slot print_timing: id  3 | task 0 |        eval time =    7577.44 ms /   904 tokens (    8.39 ms per token,   119.17 tokens per second)
+0.09.231.348 I slot print_timing: id  3 | task 0 |       total time =    7592.43 ms /   908 tokens
+0.09.231.349 I slot print_timing: id  3 | task 0 |    graphs reused =        900
+0.09.231.373 I slot      release: id  3 | task 0 | stop processing: n_tokens = 907, truncated = 0

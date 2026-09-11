@@ -137,17 +137,78 @@ class ToolRunner:
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=False,  # Leer en bytes para medir cuota exacta
                 cwd=workspace_cwd,
                 env=safe_env
             )
 
+            stdout_chunks = []
+            stderr_chunks = []
+            total_stdout_len = 0
+            killed_due_to_overflow = False
+            timed_out = False
+
+            import threading
+
+            def reader_stdout():
+                nonlocal total_stdout_len, killed_due_to_overflow
+                try:
+                    while True:
+                        chunk = proc.stdout.read(4096)
+                        if not chunk:
+                            break
+                        total_stdout_len += len(chunk)
+                        if total_stdout_len > self.policy.max_output_bytes:
+                            killed_due_to_overflow = True
+                            proc.kill()
+                            break
+                        stdout_chunks.append(chunk)
+                except Exception:
+                    pass
+
+            def reader_stderr():
+                try:
+                    while True:
+                        chunk = proc.stderr.read(4096)
+                        if not chunk:
+                            break
+                        stderr_chunks.append(chunk)
+                except Exception:
+                    pass
+
+            t_out = threading.Thread(target=reader_stdout, daemon=True)
+            t_err = threading.Thread(target=reader_stderr, daemon=True)
+            t_out.start()
+            t_err.start()
+
+            deadline = time.time() + time_limit
+            while proc.poll() is None:
+                if killed_due_to_overflow:
+                    break
+                if time.time() > deadline:
+                    timed_out = True
+                    proc.kill()
+                    break
+                time.sleep(0.02)
+
             try:
-                stdout_bytes, stderr_bytes = proc.communicate(timeout=time_limit)
-            except subprocess.TimeoutExpired:
+                proc.wait(timeout=2)
+            except Exception:
                 proc.kill()
-                proc.wait()
-                elapsed = time.time() - start_time
+            t_out.join(timeout=1)
+            t_err.join(timeout=1)
+
+            elapsed = time.time() - start_time
+
+            if killed_due_to_overflow:
+                return ToolExecutionResult(
+                    success=False,
+                    result=None,
+                    error=f"[ResourceLimit] Salida de '{tool_name}' superó el máximo de {self.policy.max_output_bytes} bytes (proceso terminado preventivamente).",
+                    execution_time_s=elapsed,
+                    output_truncated=True
+                )
+
+            if timed_out:
                 return ToolExecutionResult(
                     success=False,
                     result=None,
@@ -155,19 +216,8 @@ class ToolRunner:
                     execution_time_s=elapsed
                 )
 
-            elapsed = time.time() - start_time
-            output_truncated = False
-
-            if len(stdout_bytes) > self.policy.max_output_bytes:
-                output_truncated = True
-                return ToolExecutionResult(
-                    success=False,
-                    result=None,
-                    error=f"[ResourceLimit] Salida de '{tool_name}' superó el máximo de {self.policy.max_output_bytes} bytes.",
-                    execution_time_s=elapsed,
-                    output_truncated=True
-                )
-
+            stdout_bytes = b"".join(stdout_chunks)
+            stderr_bytes = b"".join(stderr_chunks)
             stdout_str = stdout_bytes.decode('utf-8', errors='replace').strip()
             stderr_str = stderr_bytes.decode('utf-8', errors='replace').strip()
 

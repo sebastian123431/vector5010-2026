@@ -232,6 +232,12 @@ class AdaptiveSemanticNetwork:
             self._matrix = None
             self._matrix_ids = []
         self._matrix_dirty = False
+
+    def mark_dirty(self):
+        """Marca la red y su matriz semántica como modificadas para sincronización."""
+        with self.lock:
+            self._dirty = True
+            self._matrix_dirty = True
             
     def _create_initial_neuron(self):
         """Crea la primera neurona de la red."""

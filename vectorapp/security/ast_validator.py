@@ -198,6 +198,15 @@ class ASTSecurityValidator:
                                     "symbol": f"{func_name}(..., '{arg.value}')",
                                     "message": f"Intento de acceso dinámico a atributo restringido '{arg.value}'."
                                 })
+                            dangerous_names = {k.split('.')[-1] for k in FORBIDDEN_CALLS.keys()} | FORBIDDEN_BUILTINS
+                            if arg.value in dangerous_names:
+                                violations.append({
+                                    "line": line,
+                                    "column": col,
+                                    "rule": "FORBIDDEN_CALL_OBFUSCATION",
+                                    "symbol": f"{func_name}(..., '{arg.value}')",
+                                    "message": f"Intento de invocación ofuscada a función prohibida '{arg.value}' mediante {func_name}."
+                                })
 
                 # Bloqueo de builtins peligrosos
                 if func_name in FORBIDDEN_BUILTINS:

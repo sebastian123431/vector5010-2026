@@ -68,10 +68,18 @@ from .security import (
     state_change_endpoint,
     read_only_endpoint,
 )
+from .identity import (
+    identity_manager,
+    IdentityStatus,
+    IdentityState,
+    IdentitySource,
+)
+from .cognition import reasoning_engine, ReasoningMode
 
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
+
 
 # Percepción visual global en tiempo real
 current_vision_perception = "Cámara inactiva"
@@ -654,11 +662,11 @@ def sanitizar_respuesta_vector(texto: str) -> str:
 
     return texto
 
-def recuperar_memoria_asociativa(mensaje: str) -> str:
+def recuperar_memoria_asociativa(mensaje: str, interlocutor: str = "", session_id: str = "") -> str:
     """
     Recupera recuerdos del pasado cruzando la red neuronal semántica,
-    las interacciones episódicas pasadas y los hechos aprendidos.
-    Funciona como la memoria asociativa humana sin redundancia ni bucles.
+    las interacciones episódicas pasadas y los hechos aprendidos,
+    con estricto aislamiento por identidad de interlocutor y sesión.
     """
     recuerdos = []
     mensaje_lower = mensaje.lower()
@@ -671,7 +679,7 @@ def recuperar_memoria_asociativa(mensaje: str) -> str:
     es_retrospectivo = any(p in mensaje_lower for p in ["recuerdas", "acuerdas", "hablamos", "dijiste", "charlamos", "mencionaste", "pasado", "anterior", "ayer", "la otra vez", "hace un rato", "que te dije", "qué te dije"])
     es_consulta_memoria_abierta = any(p in mensaje_lower for p in ["que sabes sobre", "qué sabes sobre", "que has aprendido", "qué has aprendido", "tienes en memoria", "en tu memoria", "busca en tu memoria", "que recuerdas", "qué recuerdas"])
     
-    # 1. Búsqueda en la Red Neuronal Semántica (solo conceptos altamente afines con umbral estricto)
+    # 1. Búsqueda en la Red Neuronal Semántica (conceptos globales con umbral estricto)
     try:
         insights = semantic_network.query_network(mensaje, top_k=3)
         for nid, sim in insights:
@@ -684,26 +692,39 @@ def recuperar_memoria_asociativa(mensaje: str) -> str:
                     if c and c not in recuerdos:
                         recuerdos.append(f"Concepto previo: '{c[:80]}'")
     except Exception as e:
-        print(f"Error consultando red neuronal: {e}")
+        logger.debug(f"Error consultando red neuronal: {e}")
 
-    # 2. Búsqueda episódica en interacciones pasadas (Interaction)
+    # 2. Búsqueda episódica en interacciones pasadas (Interaction) aislada por interlocutor y sesión
     if es_retrospectivo or es_consulta_memoria_abierta:
         try:
             palabras = [w for w in mensaje_lower.replace('?', '').replace('¿', '').split() if len(w) > 4 and w not in stop_words]
             if palabras:
                 from django.db.models import Q
-                q_filter = Q()
+                q_words = Q()
                 for p in palabras[:3]:
-                    q_filter |= Q(question__icontains=p)
+                    q_words |= Q(question__icontains=p)
                 
-                interacciones = Interaction.objects.filter(q_filter).exclude(question=mensaje).order_by('-timestamp')[:2]
+                # Aislamiento por interlocutor: si hay un interlocutor específico, NO filtrar recuerdos de otros
+                q_scope = Q()
+                if interlocutor and interlocutor.lower() not in ("invitado", "interlocutor", "interlocutor_anonimo", ""):
+                    q_scope = Q(user_name__iexact=interlocutor)
+                    if session_id:
+                        q_scope |= Q(session_id=session_id)
+                elif session_id:
+                    q_scope = Q(session_id=session_id)
+
+                qs = Interaction.objects.filter(q_words)
+                if q_scope:
+                    qs = qs.filter(q_scope)
+
+                interacciones = qs.exclude(question=mensaje).order_by('-timestamp')[:2]
                 for it in interacciones:
                     ans_clean = sanitizar_respuesta_vector(it.answer)[:80]
                     q_clean = limpiar_texto_memoria(it.question)[:60]
                     if q_clean and ans_clean:
                         recuerdos.append(f"Charla previa: sobre '{q_clean}' se discutió '{ans_clean}'")
         except Exception as e:
-            print(f"Error consultando interacciones pasadas: {e}")
+            logger.debug(f"Error consultando interacciones pasadas: {e}")
 
     # 3. Búsqueda en hechos aprendidos (MemoryEntry)
     if es_retrospectivo or es_consulta_memoria_abierta:
@@ -716,24 +737,25 @@ def recuperar_memoria_asociativa(mensaje: str) -> str:
                     if clean_m and clean_m not in recuerdos:
                         recuerdos.append(f"Dato aprendido: '{clean_m}'")
         except Exception as e:
-            print(f"Error en MemoryEntry: {e}")
+            logger.debug(f"Error en MemoryEntry: {e}")
 
-    # 4. Fallback si no hubo coincidencias exactas por palabras clave (ej: "qué recuerdas" genérico)
+    # 4. Fallback contextual aislado
     if not recuerdos and (es_retrospectivo or es_consulta_memoria_abierta):
         try:
-            ultimas_interacciones = Interaction.objects.exclude(question=mensaje).order_by('-timestamp')[:3]
+            qs_it = Interaction.objects.exclude(question=mensaje)
+            if interlocutor and interlocutor.lower() not in ("invitado", "interlocutor", "interlocutor_anonimo", ""):
+                qs_it = qs_it.filter(user_name__iexact=interlocutor)
+            elif session_id:
+                qs_it = qs_it.filter(session_id=session_id)
+            ultimas_interacciones = qs_it.order_by('-timestamp')[:3]
             for it in ultimas_interacciones:
                 ans_clean = sanitizar_respuesta_vector(it.answer)[:70]
                 q_clean = limpiar_texto_memoria(it.question)[:50]
                 if q_clean and ans_clean:
                     recuerdos.append(f"Tema reciente: sobre '{q_clean}' tratamos '{ans_clean}'")
-            mems_recientes = MemoryEntry.objects.exclude(content__startswith="PATRONES_").exclude(content__startswith="TEMAS:").order_by('-id')[:2]
-            for m in mems_recientes:
-                clean_m = sanitizar_respuesta_vector(str(m.content or ''))[:60]
-                if clean_m and clean_m not in recuerdos:
-                    recuerdos.append(f"Dato en memoria: '{clean_m}'")
         except Exception as e:
-            print(f"Error en fallback de memoria: {e}")
+            logger.debug(f"Error en fallback de memoria: {e}")
+
 
     if recuerdos:
         return "\nRecuerdos asociados en memoria: " + "; ".join(recuerdos[:3]) + ".\n"
@@ -847,43 +869,24 @@ def preparar_contexto_vector(
     if hasattr(session, "session"):
         session = session.session
 
-    # Identificación dinámica y natural del interlocutor
-    nombre_recien_presentado = detectar_nombre_presentacion(mensaje)
-    if nombre_recien_presentado:
-        if session is not None:
-            session["user_name"] = nombre_recien_presentado
-            session["user_name_explicit"] = True
-            if hasattr(session, "modified"):
-                session.modified = True
-        nombre_interlocutor = nombre_recien_presentado
-    else:
-        nombre_interlocutor = ""
-        if session is not None and session.get("user_name"):
-            val = str(session.get("user_name")).strip()
-            if val.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-                nombre_interlocutor = val
-        if not nombre_interlocutor and session_id:
-            try:
-                prev_it = Interaction.objects.filter(session_id=session_id).exclude(user_name='').order_by('-timestamp').first()
-                if prev_it and prev_it.user_name:
-                    p_name = prev_it.user_name.strip()
-                    if p_name.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-                        nombre_interlocutor = p_name
-            except Exception:
-                pass
-        if not nombre_interlocutor and nombre_cliente and str(nombre_cliente).strip():
-            val = str(nombre_cliente).strip()
-            if val.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-                nombre_interlocutor = val.capitalize()
-        elif not nombre_interlocutor and usuario and hasattr(usuario, "first_name") and usuario.first_name:
-            nombre_interlocutor = usuario.first_name.capitalize()
+    # Identificación dinámica y contextual del interlocutor mediante IdentityManager
+    context_hints = {}
+    if nombre_cliente and str(nombre_cliente).strip():
+        context_hints["nombre_cliente"] = str(nombre_cliente).strip()
+    if usuario and hasattr(usuario, "first_name") and usuario.first_name:
+        context_hints["usuario_first_name"] = usuario.first_name
 
+    id_state = identity_manager.process_message(
+        message=mensaje,
+        session_id=session_id or "",
+        session_dict=session if isinstance(session, dict) or hasattr(session, "get") else None,
+        context_hints=context_hints
+    )
+    nombre_interlocutor = id_state.display_name if id_state.status != IdentityStatus.UNKNOWN else ""
+    nombre_recien_presentado = id_state.display_name if (id_state.source == IdentitySource.EXPLICIT_TEXT and id_state.status in (IdentityStatus.DECLARED, IdentityStatus.RECOGNIZED)) else ""
     user_profile = resolve_user_profile(user_obj=usuario, user_name=nombre_interlocutor, session=session)
-    es_seba = user_profile.is_creator
-    es_millaray = (user_profile.role.value == "trusted_user")
-    es_sebastian = es_seba  # Compatibilidad con variables internas
-    nombre_display = user_profile.display_name if nombre_interlocutor else ("Seba" if es_seba else "")
-    interlocutor_ref = user_profile.display_name if (es_seba or es_millaray or nombre_interlocutor) else "el usuario"
+    nombre_display = user_profile.display_name if nombre_interlocutor else ""
+    interlocutor_ref = nombre_display if nombre_interlocutor else "el usuario"
 
     # Enrutamiento híbrido cognitivo y cálculo de complejidad
     route_result = query_optimizer.route_query(mensaje, user_name=nombre_display or nombre_interlocutor)
@@ -1093,60 +1096,29 @@ def preparar_contexto_vector(
     es_consulta_identidad = any(p in mensaje_lower for p in patrones_identidad)
     contexto_identidad = ""
     if es_consulta_identidad:
-        if es_seba:
-            contexto_identidad = (
-                f"\nDIRECTIVA PRIORITARIA DE IDENTIDAD:\n"
-                f"Seba te pregunta quién es o cómo se llama. Respóndele directamente: "
-                f"'Tú eres Seba (Sebastian Espíndola), mi creador e interlocutor principal.' (con respeto, lealtad y estilo J.A.R.V.I.S.). "
-                f"NUNCA digas que tú te llamas Sebastian ni agregues saludos genéricos.\n"
-            )
-        elif es_millaray:
-            contexto_identidad = (
-                f"\nDIRECTIVA PRIORITARIA DE IDENTIDAD:\n"
-                f"Millaray te pregunta quién es o cómo se llama. Respóndele directamente y de forma cálida: "
-                f"'Tú eres Millaray. Estás interactuando conmigo a través del sistema de Seba.' "
-                f"NUNCA la llames Seba ni Sebastian.\n"
-            )
-        elif nombre_interlocutor:
+        if nombre_interlocutor:
             contexto_identidad = (
                 f"\nDIRECTIVA PRIORITARIA DE IDENTIDAD:\n"
                 f"{nombre_interlocutor} te pregunta quién es o cómo se llama. Respóndele directamente: "
-                f"'Tú eres {nombre_interlocutor}. Me indicaste tu nombre en nuestra conversación.' "
-                f"NUNCA la/lo llames Seba ni Sebastian.\n"
+                f"'Tú eres {nombre_interlocutor}. Me indicaste tu nombre en nuestra conversación.'\n"
             )
         else:
             contexto_identidad = (
                 f"\nDIRECTIVA PRIORITARIA DE IDENTIDAD:\n"
-                f"El usuario te pregunta quién es o cómo se llama, pero aún no te ha dicho su nombre en esta conversación. "
-                f"Respóndele amablemente y con naturalidad: 'Aún no me has dicho tu nombre. ¿Cómo te llamas? ¿Eres Seba, Millaray o alguien más?'\n"
+                f"El interlocutor te pregunta quién es o cómo se llama, pero aún no se ha presentado en esta conversación. "
+                f"Respóndele amablemente y con naturalidad: 'Aún no me has indicado tu nombre en esta sesión. ¿Cómo te llamas?'\n"
             )
 
     # Directiva si el usuario se acaba de presentar con su nombre en este turno
     contexto_presentacion = ""
     if nombre_recien_presentado:
-        if es_seba:
-            contexto_presentacion = (
-                f"\nDIRECTIVA PRIORITARIA DE IDENTIFICACIÓN Y SALUDO:\n"
-                f"Seba (tu creador) se acaba de identificar diciendo quién es ('{mensaje}'). "
-                f"Respóndele con alegría, lealtad y respeto estilo J.A.R.V.I.S.: "
-                f"'¡Hola, Seba! Un gusto saludarte, creador. ¿En qué trabajamos hoy?'\n"
-            )
-        elif es_millaray:
-            contexto_presentacion = (
-                f"\nDIRECTIVA PRIORITARIA DE PRESENTACIÓN Y BIENVENIDA:\n"
-                f"Millaray se acaba de identificar diciendo quién es ('{mensaje}'). "
-                f"Salúdala cálidamente y con amabilidad llamándola por su nombre: "
-                f"'¡Hola, Millaray! Qué gusto saludarte. Soy Vector, el copiloto de IA de Seba. ¿En qué te puedo ayudar hoy?' "
-                f"Recuerda que ella es Millaray durante toda la conversación y NUNCA la llames Seba ni Sebastian.\n"
-            )
-        else:
-            contexto_presentacion = (
-                f"\nDIRECTIVA PRIORITARIA DE PRESENTACIÓN Y BIENVENIDA:\n"
-                f"Tu interlocutor(a) se acaba de presentar diciendo: '{mensaje}' (su nombre es {nombre_recien_presentado}). "
-                f"Salúdala/o de inmediato llamándola/o por su nombre de forma cálida y profesional: "
-                f"'¡Hola, {nombre_recien_presentado}! Un gusto saludarte. Soy Vector. ¿En qué te puedo ayudar hoy?' "
-                f"Recuerda su nombre {nombre_recien_presentado} para toda esta sesión y NUNCA la/lo llames Seba ni Sebastian.\n"
-            )
+        contexto_presentacion = (
+            f"\nDIRECTIVA PRIORITARIA DE PRESENTACIÓN Y BIENVENIDA:\n"
+            f"Tu interlocutor(a) se acaba de presentar diciendo: '{mensaje}' (su nombre es {nombre_recien_presentado}). "
+            f"Salúdala/o de inmediato llamándola/o por su nombre de forma cálida y profesional: "
+            f"'¡Hola, {nombre_recien_presentado}! Un gusto saludarte. Soy Vector. ¿En qué te puedo ayudar hoy?' "
+            f"Recuerda su nombre {nombre_recien_presentado} para toda esta sesión.\n"
+        )
 
     # Detección de vigilancia / supervisión autónoma (Centinela)
     patrones_vigilancia = [
@@ -1223,7 +1195,7 @@ def preparar_contexto_vector(
     es_pedido_ayuda = any(p in mensaje_lower for p in patrones_ayuda)
     contexto_ayuda = ""
     if es_pedido_ayuda and not pide_busqueda and not es_consulta_clima and not es_consulta_vigilancia:
-        saludo_ayuda = "Sebastian" if es_sebastian else (nombre_display if nombre_interlocutor else "en lo que necesites")
+        saludo_ayuda = nombre_display if nombre_interlocutor else "en lo que necesites"
         contexto_ayuda = (
             f"\nDIRECTIVA PRIORITARIA DE ASISTENCIA TÉCNICA:\n"
             f"{interlocutor_ref} te pide tu ayuda o apoyo directo. Responde con total prontitud y disposición: "
@@ -1251,12 +1223,12 @@ def preparar_contexto_vector(
     context_memoria = ""
     contexto_memoria_directiva = ""
     if (es_retrospectivo or es_consulta_memoria) and not skip_flags.get("skip_memory_analysis", False):
-        context_memoria = recuperar_memoria_asociativa(mensaje)
+        context_memoria = recuperar_memoria_asociativa(mensaje, interlocutor=nombre_interlocutor, session_id=session_id or "")
         if es_consulta_memoria:
             mem_text = context_memoria.strip() if context_memoria else "nuestras conversaciones recientes, análisis del sistema y optimización del código"
             contexto_memoria_directiva = (
                 f"\nDIRECTIVA PRIORITARIA DE MEMORIA:\n"
-                f"Sebastian te pregunta qué recuerdas o qué tienes en memoria. Responde de forma directa y natural citando los temas de tu memoria:\n"
+                f"{nombre_display or 'El interlocutor'} te pregunta qué recuerdas o qué tienes en memoria. Responde de forma directa y natural citando los temas de tu memoria:\n"
                 f"{mem_text}\n"
                 f"Ejemplo: 'En mi memoria registro nuestras conversaciones y temas recientes sobre {mem_text[:100]}...'\n"
                 f"Sé conciso y NO saludes ni hables de capacidad operativa.\n"
@@ -1752,7 +1724,7 @@ def preparar_contexto_vector(
                 try:
                     semantic_network.add_memory(
                         f"IDENTIDAD VISUAL: {interlocutor_ref} ha registrado su fotografía personal ({analisis_visual['faces']['summary']}).",
-                        "creator" if es_sebastian else "fact"
+                        "visual_identity"
                     )
                 except Exception as e_net:
                     logger.warning(f"Aviso agregando memoria visual a red semántica: {e_net}")
@@ -1787,7 +1759,7 @@ def preparar_contexto_vector(
     if es_pregunta_recuerda_foto:
         try:
             q_vis = MemoryEntry.objects.filter(entry_type='visual_identity')
-            if not es_sebastian and interlocutor_ref:
+            if interlocutor_ref and interlocutor_ref != "el usuario":
                 q_vis = q_vis.filter(content__icontains=interlocutor_ref)
             mem_vis = q_vis.order_by('-created_at').first()
             if mem_vis:
@@ -1822,36 +1794,19 @@ def preparar_contexto_vector(
         )
 
     directiva_clima_str = (
-        f"23. METEOROLOGÍA CHILENA Y FUENTES OFICIALES CONOCIDAS: Tu creador y anfitrión Sebastian reside en Vicuña (Región de Coquimbo). Tus ÚNICAS dos fuentes oficiales reconocidas para el pronóstico del tiempo y lluvia en Chile son: 1) Meteored Chile (meteored.cl) y 2) AccuWeather Chile (accuweather.com). Calibra siempre la probabilidad con los milímetros (0.0 mm a 0.3 mm = nubosidad o llovizna débil sin acumulación, no lluvia torrencial). TERMINANTEMENTE PROHIBIDO mencionar sitios de Argentina, agencias de EE.UU. u otros países extranjeros. Si no se te pregunta por el tiempo, no hables de él; pero si se consulta o se piden las fuentes, cítalas con exactitud.\n"
+        f"23. METEOROLOGÍA CHILENA Y FUENTES OFICIALES CONOCIDAS: Tu anfitrión y creador Sebastian reside en Vicuña (Región de Coquimbo). Tus ÚNICAS dos fuentes oficiales reconocidas para el pronóstico del tiempo y lluvia en Chile son: 1) Meteored Chile (meteored.cl) y 2) AccuWeather Chile (accuweather.com). Calibra siempre la probabilidad con los milímetros (0.0 mm a 0.3 mm = nubosidad o llovizna débil sin acumulación, no lluvia torrencial). TERMINANTEMENTE PROHIBIDO mencionar sitios de Argentina, agencias de EE.UU. u otros países extranjeros. Si no se te pregunta por el tiempo, no hables de él; pero si se consulta o se piden las fuentes, cítalas con exactitud.\n"
     )
 
-    if es_seba:
-        instruccion_interlocutor = (
-            f"Tu interlocutor en esta sesión se identificó como Seba (Sebastian Espíndola, tu creador y programador principal). "
-            f"Dirígete a él como Seba o Sebastian con lealtad, afecto, respeto y estilo J.A.R.V.I.S. NUNCA te saludes a ti mismo diciendo 'Hola Vector'."
-        )
-    elif es_millaray:
-        instruccion_interlocutor = (
-            f"Tu interlocutor(a) en esta sesión se identificó como Millaray. "
-            f"NO es Seba; es Millaray conversando contigo en el sistema de Seba. "
-            f"Tu creador, programador y anfitrión es Seba (Sebastian Espíndola). "
-            f"Dirígete a Millaray de forma atenta, cálida y respetuosa llamándola por su nombre Millaray ('Hola Millaray', 'Millaray', etc.). "
-            f"NUNCA la llames Seba ni Sebastian."
-        )
-    elif nombre_interlocutor:
+    if nombre_interlocutor:
         instruccion_interlocutor = (
             f"Tu interlocutor(a) actual en esta sesión es {nombre_display}. "
-            f"NO es Seba; es una persona que te indicó su nombre en el diálogo. "
-            f"Tu creador, programador y anfitrión es Seba (Sebastian Espíndola). "
-            f"Dirígete a {nombre_display} de forma personalizada, atenta y respetuosa llamándola/o por su nombre ('Hola {nombre_display}'). "
-            f"NUNCA la/lo llames Seba ni Sebastian."
+            f"Dirígete a {nombre_display} de forma personalizada, atenta y respetuosa llamándola/o por su nombre ('Hola {nombre_display}')."
         )
     else:
         instruccion_interlocutor = (
             f"El interlocutor actual en esta sesión aún no te ha indicado su nombre en el diálogo. "
-            f"Tu creador, programador y anfitrión es Seba (Sebastian Espíndola). "
             f"Atiende a este usuario con cortesía y eficiencia estilo J.A.R.V.I.S. "
-            f"NUNCA asumas automáticamente quién es ni inventes un nombre a menos que te diga 'soy seba', 'soy millaray' o te dé su nombre en el diálogo."
+            f"NUNCA inventes un nombre a menos que te dé su nombre en el diálogo."
         )
 
     system_prompt = (
@@ -1935,33 +1890,20 @@ def interactuar(request):
     if not mensaje and not audio_input and not video_input and not imagen_input:
         return Response({"error": "Mensaje vacío"}, status=400)
 
-    # Detectar nombre preliminar del interlocutor
-    nombre_recien_presentado = detectar_nombre_presentacion(mensaje)
-    nombre_interlocutor = ""
-    if nombre_recien_presentado:
-        nombre_interlocutor = nombre_recien_presentado
-        if session is not None:
-            session["user_name"] = nombre_recien_presentado
-            session["user_name_explicit"] = True
-            if hasattr(session, "modified"):
-                session.modified = True
-    elif session is not None and session.get("user_name"):
-        val = str(session.get("user_name")).strip()
-        if val.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-            nombre_interlocutor = val
-    if not nombre_interlocutor and session_id:
-        try:
-            prev_it = Interaction.objects.filter(session_id=session_id).exclude(user_name='').order_by('-timestamp').first()
-            if prev_it and prev_it.user_name:
-                p_name = prev_it.user_name.strip()
-                if p_name.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-                    nombre_interlocutor = p_name
-        except Exception:
-            pass
-    if not nombre_interlocutor and nombre_cliente:
-        val = str(nombre_cliente).strip()
-        if val.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-            nombre_interlocutor = val.capitalize()
+    # Identificación dinámica mediante IdentityManager
+    context_hints = {}
+    if nombre_cliente and str(nombre_cliente).strip():
+        context_hints["nombre_cliente"] = str(nombre_cliente).strip()
+    if usuario and hasattr(usuario, "first_name") and usuario.first_name:
+        context_hints["usuario_first_name"] = usuario.first_name
+
+    id_state = identity_manager.process_message(
+        message=mensaje,
+        session_id=session_id or "",
+        session_dict=session if isinstance(session, dict) or hasattr(session, "get") else None,
+        context_hints=context_hints
+    )
+    nombre_interlocutor = id_state.display_name if id_state.status != IdentityStatus.UNKNOWN else ""
 
     # 1. Si no hay archivo adjunto, imagen, audio, video ni enlaces web, comprobar respuestas rápidas y caché
     enlaces_en_msg = extraer_enlaces(mensaje)
@@ -2026,6 +1968,24 @@ def interactuar(request):
                 if accion:
                     respuesta = f"{accion}\n\n{respuesta}"
 
+        # Ciclo de razonamiento cognitivo supervisado para consultas complejas o intensivas
+        reasoning_trace = None
+        if complexity in (QueryComplexity.COMPLEX, QueryComplexity.INTENSIVE):
+            try:
+                reasoning_trace = reasoning_engine.reason(
+                    query=mensaje_limpio,
+                    interlocutor=nombre_actual or nombre_interlocutor,
+                    mode=ReasoningMode.EXECUTE,
+                    draft_response=respuesta,
+                    context={"complexity": complexity.value, "session_id": session_id}
+                )
+                if reasoning_trace.get("critic"):
+                    c_eval = reasoning_trace["critic"]
+                    if not c_eval.get("passed", True) and "```" in respuesta and respuesta.count("```") % 2 != 0:
+                        respuesta += "\n```"
+            except Exception as e_reas:
+                logger.debug(f"[Interactuar] Aviso en reasoning_engine: {e_reas}")
+
         # Auto-diseño y graficación meteorológica en la respuesta de Vector si es consulta de clima
         if "DATOS METEOROLÓGICOS" in system_prompt and not ("| Indicador" in respuesta or "| Indicadores" in respuesta or "| Registro" in respuesta):
             try:
@@ -2060,7 +2020,12 @@ def interactuar(request):
     if session:
         request.session["chat_history"] = history[-20:]
 
-    return Response({"respuesta": respuesta, "user_name": nombre_actual, "session_id": session_id})
+    return Response({
+        "respuesta": respuesta,
+        "user_name": nombre_actual,
+        "session_id": session_id,
+        "reasoning": reasoning_trace
+    })
 
 
 @api_view(['POST', 'GET'])
@@ -2106,32 +2071,20 @@ def interactuar_stream(request):
     if not session_id and session and session.get("session_id"):
         session_id = session.get("session_id")
 
-    nombre_recien_presentado = detectar_nombre_presentacion(mensaje)
-    nombre_interlocutor = ""
-    if nombre_recien_presentado:
-        nombre_interlocutor = nombre_recien_presentado
-        if session is not None:
-            session["user_name"] = nombre_recien_presentado
-            session["user_name_explicit"] = True
-            if hasattr(session, "modified"):
-                session.modified = True
-    elif session is not None and session.get("user_name"):
-        val = str(session.get("user_name")).strip()
-        if val.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-            nombre_interlocutor = val
-    if not nombre_interlocutor and session_id:
-        try:
-            prev_it = Interaction.objects.filter(session_id=session_id).exclude(user_name='').order_by('-timestamp').first()
-            if prev_it and prev_it.user_name:
-                p_name = prev_it.user_name.strip()
-                if p_name.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-                    nombre_interlocutor = p_name
-        except Exception:
-            pass
-    if not nombre_interlocutor and nombre_cliente:
-        val = str(nombre_cliente).strip()
-        if val.lower() not in ("invitado", "anónimo", "anonimo", "undefined", "null", "tú", "tu"):
-            nombre_interlocutor = val.capitalize()
+    # Identificación dinámica mediante IdentityManager
+    context_hints = {}
+    if nombre_cliente and str(nombre_cliente).strip():
+        context_hints["nombre_cliente"] = str(nombre_cliente).strip()
+    if usuario and hasattr(usuario, "first_name") and usuario.first_name:
+        context_hints["usuario_first_name"] = usuario.first_name
+
+    id_state = identity_manager.process_message(
+        message=mensaje,
+        session_id=session_id or "",
+        session_dict=session if isinstance(session, dict) or hasattr(session, "get") else None,
+        context_hints=context_hints
+    )
+    nombre_interlocutor = id_state.display_name if id_state.status != IdentityStatus.UNKNOWN else ""
 
     system_prompt, history_turns, mensaje_limpio = preparar_contexto_vector(
         mensaje, session=session, imagen_input=imagen_input, usuario=usuario, historial_input=historial_input, archivo_adjunto=archivo,

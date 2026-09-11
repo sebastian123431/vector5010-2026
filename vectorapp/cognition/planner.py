@@ -26,6 +26,10 @@ class PlanStep:
     dependencies: List[int] = field(default_factory=list)
     status: StepStatus = StepStatus.PENDING
     result: Optional[Any] = None
+    input_data: Optional[Any] = None
+    output_data: Optional[Any] = None
+    latency_ms: float = 0.0
+    error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -35,6 +39,11 @@ class PlanStep:
             "required_tool": self.required_tool,
             "dependencies": self.dependencies,
             "status": self.status.value,
+            "result": str(self.result) if self.result is not None else None,
+            "input_data": self.input_data,
+            "output_data": self.output_data,
+            "latency_ms": round(self.latency_ms, 2),
+            "error": self.error,
         }
 
 

@@ -6,7 +6,7 @@ from .planner import CognitivePlanner, CognitivePlan, PlanStep, StepStatus
 from .executor import PlanExecutor
 from .critic import CognitiveCritic, CriticEvaluation
 from .verifier import CognitiveVerifier
-from .reasoning_engine import ReasoningEngine, reasoning_engine
+from .reasoning_engine import ReasoningEngine, reasoning_engine, ReasoningMode
 
 __all__ = [
     "CognitivePlanner",
@@ -19,4 +19,5 @@ __all__ = [
     "CognitiveVerifier",
     "ReasoningEngine",
     "reasoning_engine",
+    "ReasoningMode",
 ]

@@ -102,3 +102,23 @@ class TestTelemetryManager(unittest.TestCase):
         self.assertEqual(d["query_id"], "qid_1")
         self.assertEqual(d["tools_invoked"], ["js_parser"])
 
+    def test_identity_and_sandbox_metrics(self):
+        """Verifica el registro de fuentes de identidad, rutas y bloqueos de sandbox."""
+        self.telemetry.record_query(
+            query_id="q_secure",
+            interlocutor="Juan",
+            intent="system",
+            complexity_score=0.85,
+            latency_ms=45.0,
+            identity_source="explicit_text",
+            identity_confidence=1.0,
+            route="tier_2_reasoning",
+            sandbox_blocks=1
+        )
+        summary = self.telemetry.get_metrics_summary()
+        self.assertEqual(summary["total_sandbox_blocks"], 1)
+        self.assertEqual(summary["identity_source_distribution"]["explicit_text"], 1)
+        self.assertEqual(summary["route_distribution"]["tier_2_reasoning"], 1)
+        self.assertEqual(summary["complexity_distribution"]["intensive"], 1)
+
+

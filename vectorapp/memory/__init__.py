@@ -6,6 +6,7 @@ Proporciona modelos tipados, puntuación compuesta multidimensional y backends N
 from .types import MemoryType, MemoryItem
 from .scoring import CompositeMemoryScorer
 from .backend import MemoryBackend, NumpyMemoryBackend, FaissMemoryBackend
+from .manager import MemoryManager, memory_manager
 
 __all__ = [
     "MemoryType",
@@ -14,4 +15,6 @@ __all__ = [
     "MemoryBackend",
     "NumpyMemoryBackend",
     "FaissMemoryBackend",
+    "MemoryManager",
+    "memory_manager",
 ]

@@ -10800,3 +10800,231 @@ is can be a security risk (cross-origin attacks)
 51.26.199.728 I slot get_availabl: id  2 | task -1 | selected slot by LCP similarity, f_sim_best = 0.102 (> 0.100 thold), f_keep = 0.083
 51.26.199.735 I slot launch_slot_: id  2 | task 229 | processing task, is_child = 0
 51.26.208.202 I slot      release: id  2 | task 229 | stop processing: n_tokens = 98, truncated = 0
+0.00.116.301 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.116.310 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.116.311 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.116.632 W srv  llama_server: -----------------
+0.00.116.634 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.116.634 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.116.635 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.116.635 W srv  llama_server: -----------------
+0.00.121.620 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.310.205 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.385.728 I cmn          init: llama threadpool init, n_threads = 6
+0.00.485.985 W srv    load_model: speculative decoding not supported by this context
+0.00.485.990 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.489.458 I srv  llama_server: model loaded
+0.00.489.463 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.619.246 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.619.256 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.700.873 I slot      release: id  3 | task 0 | stop processing: n_tokens = 18, truncated = 0
+0.00.714.309 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.500 (> 0.100 thold), f_keep = 0.500
+0.00.714.317 I slot launch_slot_: id  3 | task 2 | processing task, is_child = 0
+0.00.719.487 I slot      release: id  3 | task 2 | stop processing: n_tokens = 18, truncated = 0
+0.00.143.534 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.143.547 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.143.552 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.144.058 W srv  llama_server: -----------------
+0.00.144.066 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.144.066 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.144.067 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.144.067 W srv  llama_server: -----------------
+0.00.156.120 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.347.303 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.401.994 I cmn          init: llama threadpool init, n_threads = 6
+0.00.440.536 W srv    load_model: speculative decoding not supported by this context
+0.00.440.542 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.443.691 I srv  llama_server: model loaded
+0.00.443.699 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.608.415 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.608.428 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.624.852 I slot      release: id  3 | task 0 | stop processing: n_tokens = 18, truncated = 0
+0.00.635.341 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.500 (> 0.100 thold), f_keep = 0.500
+0.00.635.360 I slot launch_slot_: id  3 | task 2 | processing task, is_child = 0
+0.00.640.760 I slot      release: id  3 | task 2 | stop processing: n_tokens = 18, truncated = 0
+0.00.103.157 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.103.166 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.103.167 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.103.491 W srv  llama_server: -----------------
+0.00.103.494 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.103.495 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.103.495 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.103.495 W srv  llama_server: -----------------
+0.00.117.586 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.261.025 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.311.157 I cmn          init: llama threadpool init, n_threads = 6
+0.00.352.631 W srv    load_model: speculative decoding not supported by this context
+0.00.352.636 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.355.929 I srv  llama_server: model loaded
+0.00.355.936 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.601.550 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.601.563 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.618.730 I slot      release: id  3 | task 0 | stop processing: n_tokens = 18, truncated = 0
+0.00.629.213 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.500 (> 0.100 thold), f_keep = 0.500
+0.00.629.223 I slot launch_slot_: id  3 | task 2 | processing task, is_child = 0
+0.00.634.152 I slot      release: id  3 | task 2 | stop processing: n_tokens = 18, truncated = 0
+0.00.146.711 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.146.725 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.146.727 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.147.202 W srv  llama_server: -----------------
+0.00.147.204 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.147.204 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.147.205 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.147.205 W srv  llama_server: -----------------
+0.00.163.661 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.330.238 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.409.371 I cmn          init: llama threadpool init, n_threads = 6
+0.00.550.955 W srv    load_model: speculative decoding not supported by this context
+0.00.550.961 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.555.497 I srv  llama_server: model loaded
+0.00.555.504 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.584.312 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.584.326 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.665.308 I slot      release: id  3 | task 0 | stop processing: n_tokens = 10, truncated = 0
+0.00.674.305 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.400 (> 0.100 thold), f_keep = 0.400
+0.00.674.316 I slot launch_slot_: id  3 | task 2 | processing task, is_child = 0
+0.00.679.267 I slot      release: id  3 | task 2 | stop processing: n_tokens = 10, truncated = 0
+0.00.700.994 I slot get_availabl: id  2 | task -1 | selected slot by LRU, t_last = -1
+0.00.701.005 I slot launch_slot_: id  2 | task 4 | processing task, is_child = 0
+0.00.706.228 I slot      release: id  2 | task 4 | stop processing: n_tokens = 12, truncated = 0
+0.00.712.222 I slot get_availabl: id  1 | task -1 | selected slot by LRU, t_last = -1
+0.00.712.232 I slot launch_slot_: id  1 | task 6 | processing task, is_child = 0
+0.00.898.685 I slot      release: id  1 | task 6 | stop processing: n_tokens = 13, truncated = 0
+0.00.903.784 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.00.903.792 I slot launch_slot_: id  0 | task 8 | processing task, is_child = 0
+0.00.924.372 I slot      release: id  0 | task 8 | stop processing: n_tokens = 22, truncated = 0
+0.00.110.768 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.110.777 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.110.779 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.111.074 W srv  llama_server: -----------------
+0.00.111.078 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.111.079 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.111.079 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.111.079 W srv  llama_server: -----------------
+0.00.122.137 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.261.108 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.312.208 I cmn          init: llama threadpool init, n_threads = 6
+0.00.349.470 W srv    load_model: speculative decoding not supported by this context
+0.00.349.475 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.352.588 I srv  llama_server: model loaded
+0.00.352.596 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.622.161 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.622.174 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.635.362 I slot      release: id  3 | task 0 | stop processing: n_tokens = 10, truncated = 0
+0.00.641.827 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.400 (> 0.100 thold), f_keep = 0.400
+0.00.641.836 I slot launch_slot_: id  3 | task 2 | processing task, is_child = 0
+0.00.646.469 I slot      release: id  3 | task 2 | stop processing: n_tokens = 10, truncated = 0
+0.00.662.632 I slot get_availabl: id  2 | task -1 | selected slot by LRU, t_last = -1
+0.00.662.656 I slot launch_slot_: id  2 | task 4 | processing task, is_child = 0
+0.00.666.908 I slot      release: id  2 | task 4 | stop processing: n_tokens = 12, truncated = 0
+0.00.674.605 I slot get_availabl: id  1 | task -1 | selected slot by LRU, t_last = -1
+0.00.674.629 I slot launch_slot_: id  1 | task 6 | processing task, is_child = 0
+0.00.745.266 I slot      release: id  1 | task 6 | stop processing: n_tokens = 13, truncated = 0
+0.00.753.770 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.00.753.778 I slot launch_slot_: id  0 | task 8 | processing task, is_child = 0
+0.00.764.742 I slot      release: id  0 | task 8 | stop processing: n_tokens = 22, truncated = 0
+0.00.772.077 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.111 (> 0.100 thold), f_keep = 0.045
+0.00.772.083 I slot launch_slot_: id  0 | task 10 | processing task, is_child = 0
+0.00.775.952 I slot      release: id  0 | task 10 | stop processing: n_tokens = 9, truncated = 0
+0.00.098.531 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.098.543 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.098.545 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.098.887 W srv  llama_server: -----------------
+0.00.098.888 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.098.889 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.098.889 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.098.889 W srv  llama_server: -----------------
+0.00.106.719 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.267.439 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.344.440 I cmn          init: llama threadpool init, n_threads = 6
+0.00.385.798 W srv    load_model: speculative decoding not supported by this context
+0.00.385.803 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.389.043 I srv  llama_server: model loaded
+0.00.389.049 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.590.210 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.590.223 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.684.622 I slot      release: id  3 | task 0 | stop processing: n_tokens = 15, truncated = 0
+0.00.107.950 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.107.960 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.107.961 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.108.277 W srv  llama_server: -----------------
+0.00.108.281 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.108.281 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.108.282 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.108.282 W srv  llama_server: -----------------
+0.00.117.561 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.298.064 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.350.062 I cmn          init: llama threadpool init, n_threads = 6
+0.00.389.115 W srv    load_model: speculative decoding not supported by this context
+0.00.389.120 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.392.226 I srv  llama_server: model loaded
+0.00.392.232 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.630.034 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.630.045 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.646.693 I slot      release: id  3 | task 0 | stop processing: n_tokens = 18, truncated = 0
+0.00.657.695 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.500 (> 0.100 thold), f_keep = 0.500
+0.00.657.702 I slot launch_slot_: id  3 | task 2 | processing task, is_child = 0
+0.00.662.925 I slot      release: id  3 | task 2 | stop processing: n_tokens = 18, truncated = 0
+0.00.671.064 I slot get_availabl: id  2 | task -1 | selected slot by LRU, t_last = -1
+0.00.671.071 I slot launch_slot_: id  2 | task 4 | processing task, is_child = 0
+0.00.676.823 I slot      release: id  2 | task 4 | stop processing: n_tokens = 10, truncated = 0
+0.00.681.796 I slot get_availabl: id  2 | task -1 | selected slot by LCP similarity, f_sim_best = 0.400 (> 0.100 thold), f_keep = 0.400
+0.00.681.804 I slot launch_slot_: id  2 | task 6 | processing task, is_child = 0
+0.00.685.774 I slot      release: id  2 | task 6 | stop processing: n_tokens = 10, truncated = 0
+0.00.702.815 I slot get_availabl: id  1 | task -1 | selected slot by LRU, t_last = -1
+0.00.702.840 I slot launch_slot_: id  1 | task 8 | processing task, is_child = 0
+0.00.706.177 I slot      release: id  1 | task 8 | stop processing: n_tokens = 12, truncated = 0
+0.00.715.317 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.00.715.326 I slot launch_slot_: id  0 | task 10 | processing task, is_child = 0
+0.00.789.795 I slot      release: id  0 | task 10 | stop processing: n_tokens = 13, truncated = 0
+0.00.797.779 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = 558117
+0.00.797.792 I slot launch_slot_: id  3 | task 12 | processing task, is_child = 0
+0.00.802.965 I slot      release: id  3 | task 12 | stop processing: n_tokens = 22, truncated = 0
+0.00.809.814 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.111 (> 0.100 thold), f_keep = 0.045
+0.00.809.821 I slot launch_slot_: id  3 | task 14 | processing task, is_child = 0
+0.00.812.870 I slot      release: id  3 | task 14 | stop processing: n_tokens = 9, truncated = 0
+0.00.901.232 I slot get_availabl: id  3 | task -1 | selected slot by LCP similarity, f_sim_best = 0.133 (> 0.100 thold), f_keep = 0.222
+0.00.901.239 I slot launch_slot_: id  3 | task 16 | processing task, is_child = 0
+0.00.904.451 I slot      release: id  3 | task 16 | stop processing: n_tokens = 15, truncated = 0
+0.01.098.346 I slot get_availabl: id  2 | task -1 | selected slot by LRU, t_last = 580966
+0.01.098.354 I slot launch_slot_: id  2 | task 18 | processing task, is_child = 0
+0.01.101.490 I slot      release: id  2 | task 18 | stop processing: n_tokens = 13, truncated = 0
+0.01.104.806 I slot get_availabl: id  1 | task -1 | selected slot by LRU, t_last = 601369
+0.01.104.814 I slot launch_slot_: id  1 | task 20 | processing task, is_child = 0
+0.01.108.009 I slot      release: id  1 | task 20 | stop processing: n_tokens = 21, truncated = 0
+0.00.097.253 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.097.263 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.097.265 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.097.625 W srv  llama_server: -----------------
+0.00.097.629 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.097.630 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.097.630 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.097.630 W srv  llama_server: -----------------
+0.00.113.880 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.268.596 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.316.222 I cmn          init: llama threadpool init, n_threads = 6
+0.00.348.544 W srv    load_model: speculative decoding not supported by this context
+0.00.348.549 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.351.604 I srv  llama_server: model loaded
+0.00.351.610 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.623.186 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.623.199 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.711.246 I slot      release: id  3 | task 0 | stop processing: n_tokens = 15, truncated = 0
+0.00.096.177 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.096.187 W srv  llama_server: embeddings enabled with n_batch (2048) > n_ubatch (512)
+0.00.096.188 W srv  llama_server: setting n_batch = n_ubatch = 512 to avoid assertion failure
+0.00.096.505 W srv  llama_server: -----------------
+0.00.096.509 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.096.510 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.096.510 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.096.510 W srv  llama_server: -----------------
+0.00.100.753 I srv    load_model: loading model 'D:\escritorio\vector5010 2026\models\nomic-embed-text-v1.5.Q4_K_M.gguf'
+0.00.242.662 W load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+0.00.291.859 I cmn          init: llama threadpool init, n_threads = 6
+0.00.325.751 W srv    load_model: speculative decoding not supported by this context
+0.00.325.755 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 2048, kv_unified = 'true'
+0.00.328.758 I srv  llama_server: model loaded
+0.00.328.765 I srv  llama_server: listening on http://127.0.0.1:8002
+0.00.630.688 I slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
+0.00.630.698 I slot launch_slot_: id  3 | task 0 | processing task, is_child = 0
+0.00.717.401 I slot      release: id  3 | task 0 | stop processing: n_tokens = 15, truncated = 0

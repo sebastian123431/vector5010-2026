@@ -64,12 +64,13 @@ class MemoryEntry(models.Model):
         super().save(*args, **kwargs)
 
     @classmethod
-    def recall(cls, query: str, top_k: int = 5) -> List['MemoryEntry']:
+    def recall(cls, query: str, top_k: int = 5, limit: Optional[int] = None) -> List['MemoryEntry']:
         """
         Búsqueda semántica ultrarrápida (<1ms) utilizando multiplicación matricial NumPy
         sobre los vectores Nomic cacheados en SQLite, con fallback de generación perezosa.
         """
-        entries = list(cls.objects.all()[:200])
+        qs = cls.objects.all()
+        entries = list(qs[:limit]) if (limit is not None and limit > 0) else list(qs)
         if not entries:
             return []
 
