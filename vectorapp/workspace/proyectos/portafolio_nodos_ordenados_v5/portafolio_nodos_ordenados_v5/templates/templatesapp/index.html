@@ -1,0 +1,133 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="{{ role }}. {{ title }}">
+  <meta name="theme-color" content="#070b0a">
+  <title>{{ name }} · Portafolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="{% static 'portafoliosapp/css/portfolio-v5.css' %}">
+</head>
+<body>
+  {% csrf_token %}
+  <script>
+    window.BUBBLES = {{ bubbles_json|safe }};
+    window.PORTFOLIO_META = {
+      name: "{{ name|escapejs }}",
+      role: "{{ role|escapejs }}",
+      title: "{{ title|escapejs }}",
+      tagline: "{{ tagline|escapejs }}",
+      techStack: "{{ tech_stack|escapejs }}",
+      github: "{{ contact.github|escapejs }}",
+      linkedin: "{{ contact.linkedin|escapejs }}"
+    };
+  </script>
+
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-grid"></div>
+    <div class="ambient-glow ambient-glow-a"></div>
+    <div class="ambient-glow ambient-glow-b"></div>
+    <div class="ambient-noise"></div>
+  </div>
+
+  <header class="site-header" id="site-header">
+    <a class="brand" href="#inicio" aria-label="Volver al inicio">
+      <span class="brand-mark" aria-hidden="true">SE</span>
+      <span class="brand-copy">
+        <strong>{{ name }}</strong>
+        <small>{{ tech_stack }}</small>
+      </span>
+    </a>
+    <nav class="header-actions" aria-label="Enlaces principales">
+      <a href="{% url 'bibliografia' %}" class="header-link">Sobre mí</a>
+      <a href="{{ contact.github }}" target="_blank" rel="noopener" class="icon-link" aria-label="GitHub"><i class="bi bi-github"></i></a>
+      <a href="{{ contact.linkedin }}" target="_blank" rel="noopener" class="icon-link" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> PORTAFOLIO · INGENIERÍA EN INFORMÁTICA</p>
+        <h1 id="hero-title">{{ role }}</h1>
+        <p class="hero-tagline">{{ tagline }}</p>
+        <p class="hero-description">{{ title }} Desarrollo soluciones que conectan software, datos y operación real.</p>
+        <div class="hero-meta" aria-label="Tecnologías principales">
+          <span>Python</span><span>Django</span><span>Kotlin</span><span>SQL Server</span>
+        </div>
+      </div>
+
+      <div class="graph-wrap" id="graph-wrap" aria-label="Mapa interactivo del portafolio">
+        <div class="graph-label graph-label-top"><span>Explora el mapa</span><small>Selecciona un nodo o desplázate</small></div>
+        <svg class="graph-lines" id="graph-lines" aria-hidden="true"></svg>
+        <div class="graph-stage" id="graph-stage"></div>
+        <div class="graph-orbit orbit-a" aria-hidden="true"></div>
+        <div class="graph-orbit orbit-b" aria-hidden="true"></div>
+      </div>
+
+      <a class="scroll-cue" href="#explorar">
+        <span>Ordenar y explorar</span>
+        <i class="bi bi-arrow-down"></i>
+      </a>
+    </section>
+
+    <section class="morph-bridge" id="morph-bridge" aria-hidden="true">
+      <div class="morph-copy">
+        <span>DEL MAPA AL CONTEXTO</span>
+        <strong>Los mismos nodos. Ahora ordenados para leer.</strong>
+      </div>
+    </section>
+
+    <section class="explorer" id="explorar" aria-labelledby="explorer-title">
+      <div class="explorer-heading">
+        <div>
+          <p class="eyebrow">EXPLORACIÓN PROFESIONAL</p>
+          <h2 id="explorer-title">Abre lo que te interese.<br><span>Deja abierto lo que quieras comparar.</span></h2>
+        </div>
+        <div class="explorer-tools" role="group" aria-label="Controles de secciones">
+          <button type="button" class="tool-button" data-expand-all><i class="bi bi-arrows-expand"></i> Abrir todo</button>
+          <button type="button" class="tool-button" data-collapse-all><i class="bi bi-arrows-collapse"></i> Cerrar todo</button>
+        </div>
+      </div>
+
+      <div class="explorer-layout">
+        <aside class="node-rail-shell" aria-label="Navegación por módulos">
+          <div class="node-rail" id="node-rail"></div>
+        </aside>
+        <div class="module-stack" id="module-stack"></div>
+      </div>
+    </section>
+
+    <section class="closing">
+      <div>
+        <p class="eyebrow">SIGUIENTE PASO</p>
+        <h2>¿Mi perfil encaja con lo que estás construyendo?</h2>
+        <p>En Contacto puedes encontrar mis canales profesionales y datos de contacto. También puedes revisar el mapa completo sin perder tu posición.</p>
+      </div>
+      <button type="button" class="closing-button" data-open-module="contact">Ir a Contacto <i class="bi bi-arrow-up-right"></i></button>
+    </section>
+  </main>
+
+  <dialog class="media-dialog" id="media-dialog" aria-labelledby="media-dialog-title">
+    <button type="button" class="dialog-close" data-dialog-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+    <div class="media-toolbar">
+      <button type="button" data-zoom="out" aria-label="Alejar"><i class="bi bi-zoom-out"></i></button>
+      <span data-zoom-label>100%</span>
+      <button type="button" data-zoom="in" aria-label="Acercar"><i class="bi bi-zoom-in"></i></button>
+      <button type="button" data-zoom="reset" aria-label="Restablecer zoom"><i class="bi bi-arrows-angle-contract"></i></button>
+    </div>
+    <div class="media-viewport" data-media-viewport>
+      <img src="" alt="" data-media-image draggable="false">
+    </div>
+    <p id="media-dialog-title" class="media-caption" data-media-caption></p>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="{% static 'portafoliosapp/js/portfolio-v5.js' %}"></script>
+</body>
+</html>

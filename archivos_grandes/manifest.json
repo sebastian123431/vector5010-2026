@@ -1,0 +1,283 @@
+{
+  "version": 1,
+  "format": "independent-gzip-parts",
+  "files": [
+    {
+      "path": "bin/cublas64_12.dll",
+      "size": 100033536,
+      "parts": [
+        {
+          "path": "bin/cublas64_12.dll/parte-0001.gz",
+          "size": 33640941,
+          "sha256": "5cb5db4f822c0894003579bcc9e21f6f35304153b43a4c1510066397883f9080"
+        },
+        {
+          "path": "bin/cublas64_12.dll/parte-0002.gz",
+          "size": 35941444,
+          "sha256": "4254469d4f5c8e32383c4b77eb322db4ed80e2d44537cca02a81875dd7d4753a"
+        }
+      ],
+      "sha256": "e40202fe4223c1cd2d2dce7beec59e1ed61c7801bd827309183be9b50e358f4c"
+    },
+    {
+      "path": "bin/cublasLt64_12.dll",
+      "size": 473551360,
+      "parts": [
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0001.gz",
+          "size": 27333213,
+          "sha256": "a0068f8fcafc9eb6c374dc8a8a3b7e6eaf26932e0d535c3b6c32e1397489e867"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0002.gz",
+          "size": 18209495,
+          "sha256": "da2a67c1a753e4134dcea947517f38345cbc17146f9f4c79246265e2c11b4cf0"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0003.gz",
+          "size": 34583525,
+          "sha256": "30ee88dcf523f986687ab4eac29011bcf7139a341a90bf6bbec2b58d1d541aee"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0004.gz",
+          "size": 44346231,
+          "sha256": "d881efe8437f13098037de8350f5d603e534086a478fb062baaad6306ae67414"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0005.gz",
+          "size": 38080447,
+          "sha256": "5f081a887f93966dafba8dc2c14146f6f27abff2eb378acaf0bfe02f3230a28d"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0006.gz",
+          "size": 37299522,
+          "sha256": "14f3ee40fe11d7bad12c7f63c8e889de42320d097b93e79b106fdad6951269b6"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0007.gz",
+          "size": 38324568,
+          "sha256": "912365cfa9d0416812d1a4ff2cc22db5a5896667f098d54e3a0eb4745e938f5e"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0008.gz",
+          "size": 40171307,
+          "sha256": "e2f192d37173e631e07620e8c3d02a9e5be14c83c5321ef1e48ec39ca75c536e"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0009.gz",
+          "size": 39640625,
+          "sha256": "9bf56fd15a5c9e067cd196df3b3b9fe5c84a111cb767d38e4d307cf4576669e5"
+        },
+        {
+          "path": "bin/cublasLt64_12.dll/parte-0010.gz",
+          "size": 9135856,
+          "sha256": "1907d972c5769798e6bb4046d297bc0ec6a6db926eff10392a5716f2d7d5d5a4"
+        }
+      ],
+      "sha256": "2a896460bef60ed57ef32b0875812f355a6984e671d638bb632f5e8c1d7a831f"
+    },
+    {
+      "path": "bin/ggml-cuda.dll",
+      "size": 547111424,
+      "parts": [
+        {
+          "path": "bin/ggml-cuda.dll/parte-0001.gz",
+          "size": 16864767,
+          "sha256": "7a1cc2a0d27f00d92954185aaadce9c9db40b3a54cc6138b40d015a8f17286ff"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0002.gz",
+          "size": 22194997,
+          "sha256": "2b76e99ad8cbff461066cf2213bdf9d54b88488e244c96f7aca926084565df47"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0003.gz",
+          "size": 22831772,
+          "sha256": "7e7a3db73d8be67913ab542a60e23f32c70e78d7d5a52a54cb8a50bd2f96df13"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0004.gz",
+          "size": 22795415,
+          "sha256": "adeed617f4d56ffc7ae4149b1372ba45be3c7a1e8ffb86291b8703e635ed215b"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0005.gz",
+          "size": 24145340,
+          "sha256": "0c8311ee7f281d9aee311989792d0166413665a11f4075f0ed014dc37c147f0e"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0006.gz",
+          "size": 24263576,
+          "sha256": "3e0fc1e8ebda991d3bd8fcb7f1492879d96c51a879fdd67469885a291fc11eb0"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0007.gz",
+          "size": 23085709,
+          "sha256": "e9c926ca0ad6b1adb6211671de4459b3c9249afd7641bb4fd21e17b974eb239c"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0008.gz",
+          "size": 24251285,
+          "sha256": "f1d218e1c14b83ed0911ea0fb2dc02579d3a5e9336bf954a46cde2374952954e"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0009.gz",
+          "size": 23502390,
+          "sha256": "0634ef55f603ce4a8d435312a0f88467f2e62dd0461e82378c2211c97df6e6ee"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0010.gz",
+          "size": 19557028,
+          "sha256": "1e08385aa6cd9084e7dce51af47c686978b860962fee531d54b076d407a54c0a"
+        },
+        {
+          "path": "bin/ggml-cuda.dll/parte-0011.gz",
+          "size": 17516324,
+          "sha256": "7322ce115aa8b31db36d88a019af226ce3d3a7676fa0d523364841bb8a4cd076"
+        }
+      ],
+      "sha256": "f10a9e00d295ce0e258b2437e8de82dcf1ded659342dcdb1fa9968aae9437fed"
+    },
+    {
+      "path": "models/gemma-3-1b-it-Q4_K_M.gguf",
+      "size": 806058240,
+      "parts": [
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0001.gz",
+          "size": 44158279,
+          "sha256": "2435f4f00bacfc29a703b617393409a5bb035f47a582ebd87ffaf471d34613ed"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0002.gz",
+          "size": 48531986,
+          "sha256": "8795f20c2ec0ef2017f1bf8ae0f79f919587dd7dfa51c58db5249b45fe687343"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0003.gz",
+          "size": 48503021,
+          "sha256": "270926792f8c1f6edcff790eac990ba90748d216296430fdc167dbb312fdebb1"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0004.gz",
+          "size": 48482932,
+          "sha256": "f70ccd1ef38d35e1b5205e0c738868ffaaf29b07adbd5cfbdf600336b9c56464"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0005.gz",
+          "size": 48460834,
+          "sha256": "17cb0a3fb6cf296aaf7f7e2982d6f19404fc964307b70355fba25aac1e51e231"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0006.gz",
+          "size": 48454112,
+          "sha256": "11c264794f9a7e5b3248fa5fb8b59b29ef5b6d51d70c39aaf7a411442d799f5a"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0007.gz",
+          "size": 48023816,
+          "sha256": "25dac74cadca951b242385d334b5deb9ce96fa67c7404344b998cf3cc4c3bb72"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0008.gz",
+          "size": 50107128,
+          "sha256": "237e9ded7f9f46e02191ac8c6e841d1d29b650f947b89806a7f216fa96d366b5"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0009.gz",
+          "size": 49985759,
+          "sha256": "5f97b4a3f868dc8e9ee4a6d19878cce03ccb4b768c8d388e75f53ffa73f76bda"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0010.gz",
+          "size": 49998396,
+          "sha256": "b643a0298ee3161a830bf0369f82cac33734f1444e94710fda607de43f0ff46f"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0011.gz",
+          "size": 50009579,
+          "sha256": "270469619bcb0c0c84a4ffa4f56e7e8e039fa134c2b41390862ca25b9cc38aac"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0012.gz",
+          "size": 50066881,
+          "sha256": "5834f30fb5b96d963a8e1bcac0cecb34ae93ea81bc8a32bea64b1a415d36451c"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0013.gz",
+          "size": 49999131,
+          "sha256": "44b9a41ac3abb65841cea809312c27c1c6bd990ac71155a3480a19299ef850f1"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0014.gz",
+          "size": 50013199,
+          "sha256": "d1539f5950f56868defd3a497ca5eb4153a3e589427312641b299707a956ec2f"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0015.gz",
+          "size": 50083766,
+          "sha256": "39b7e7716b6bd07f2b84d52eb9ec254c0a642d33ba80780a54030f03cb53b807"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0016.gz",
+          "size": 50186044,
+          "sha256": "01e748d9fefad2611a23ceacac68fbf9b59a7eebc9db0fd5e53fc9dd772032a3"
+        },
+        {
+          "path": "models/gemma-3-1b-it-Q4_K_M.gguf/parte-0017.gz",
+          "size": 745979,
+          "sha256": "ffa5c4aa9932a6e811a51a69de2a9dfb1d1265b8d207e951a4cd9cb188155637"
+        }
+      ],
+      "sha256": "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135"
+    },
+    {
+      "path": "models/nomic-embed-text-v1.5.Q4_K_M.gguf",
+      "size": 84106624,
+      "parts": [
+        {
+          "path": "models/nomic-embed-text-v1.5.Q4_K_M.gguf/parte-0001.gz",
+          "size": 48995361,
+          "sha256": "6e172207c50c6a0fbcb0de21b733005d09ca466d285e824c98fb6c4cd82ce5f4"
+        },
+        {
+          "path": "models/nomic-embed-text-v1.5.Q4_K_M.gguf/parte-0002.gz",
+          "size": 33360816,
+          "sha256": "a0e191de341c16d8fd53e929a50ca127a0f13426342877b926eb843902f3cf5d"
+        }
+      ],
+      "sha256": "d4e388894e09cf3816e8b0896d81d265b55e7a9fff9ab03fe8bf4ef5e11295ac"
+    },
+    {
+      "path": "yolo/yolov3.weights",
+      "size": 248007048,
+      "parts": [
+        {
+          "path": "yolo/yolov3.weights/parte-0001.gz",
+          "size": 46942277,
+          "sha256": "b5b457951637719350e1c2b232b8db6e48c60baceab7333885fb9cb4a21de921"
+        },
+        {
+          "path": "yolo/yolov3.weights/parte-0002.gz",
+          "size": 46772005,
+          "sha256": "69cdee793e5c49eb6f7d76a04bbdbff4760a58dc55ed77177affd9911b7b4308"
+        },
+        {
+          "path": "yolo/yolov3.weights/parte-0003.gz",
+          "size": 46835238,
+          "sha256": "c6c8a78904ead5e0949e809f2bc1c36bf6894502994c93dc6776119051e148ed"
+        },
+        {
+          "path": "yolo/yolov3.weights/parte-0004.gz",
+          "size": 46658259,
+          "sha256": "76bdf014d67427d20d385a9b891002e0c9d63e377d5a4d6c9a14551a89979da9"
+        },
+        {
+          "path": "yolo/yolov3.weights/parte-0005.gz",
+          "size": 43342290,
+          "sha256": "e651fb5b381e4c19091a0a45cd5b90774d278dd39c8c69a162e8b4afc32303f8"
+        }
+      ],
+      "sha256": "523e4e69e1d015393a1b0a441cef1d9c7659e3eb2d7e15f793f060a21b32f297"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "-8398660885231022852": {
+    "tool_name": "comparar_pares",
+    "user_request": "Compara y verifica si un numero es par",
+    "code_signature": "{\"classes\": [], \"code_length\": 68, \"complexity\": 1, \"functions\": [\"comparar_pares\"], \"imports\": []}",
+    "created_at": "2026-09-08T17:01:24.749540",
+    "usage_count": 0,
+    "success_rate": 0.0,
+    "similar_requests": []
+  },
+  "-2636916391466427342": {
+    "tool_name": "calcular_probabilidad_lluvia",
+    "user_request": "Código generado para: generame un codigo en base a la ubicacion meteorologia en si y centrate en aprox",
+    "code_signature": "{\"classes\": [], \"code_length\": 787, \"complexity\": 1, \"functions\": [\"calcular_probabilidad_lluvia\"], \"imports\": [\"pandas\"]}",
+    "created_at": "2026-09-10T17:54:17.445731",
+    "usage_count": 0,
+    "success_rate": 0.0,
+    "similar_requests": []
+  },
+  "7944624865639582977": {
+    "tool_name": "calculations_235045",
+    "user_request": "Herramienta para: repara este código javascript por favor: function calcularTotal(precio, tasa) { var total = precio == 0 ? 0 : precio * tasa; document.getElementById('resultado').innerText = total; return total;",
+    "code_signature": "{\"classes\": [], \"code_length\": 2238, \"complexity\": 1, \"functions\": [\"execute_tool\"], \"imports\": [\"math\", \"operator\"]}",
+    "created_at": "2026-09-10T23:50:45.138323",
+    "usage_count": 0,
+    "success_rate": 0.0,
+    "similar_requests": []
+  },
+  "6156063336032579197": {
+    "tool_name": "time_related_235051",
+    "user_request": "Herramienta para: hazme una función en javascript moderno ES6+ para formatear fechas en horario de Chile",
+    "code_signature": "{\"classes\": [], \"code_length\": 808, \"complexity\": 1, \"functions\": [\"execute_tool\"], \"imports\": [\"datetime\", \"calendar\"]}",
+    "created_at": "2026-09-10T23:50:51.301486",
+    "usage_count": 0,
+    "success_rate": 0.0,
+    "similar_requests": []
+  }
+}

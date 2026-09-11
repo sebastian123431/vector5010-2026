@@ -1,5 +1,7 @@
 # 🧠 VECTOR 2026 // ESTACIÓN COGNITIVA SOBERANA J.A.R.V.I.S.
 
+> **Descarga completa:** los modelos y bibliotecas grandes estan incluidos como partes comprimidas. Despues de clonar, ejecuta `python scripts/archivos_grandes.py restore` para reconstruirlos. No requiere Git LFS. Instrucciones en [GIT.md](GIT.md).
+
 > **Creador y Desarrollador**: Sebastian Espíndola  
 > **Arquitectura**: Inteligencia Artificial Autónoma Soberana, Red Neuronal Semántica Dinámica, Percepción Sensorial Multimodal y Aislamiento de Contextos Estilo ChatGPT.  
 > **Ejecución**: 100% Local y Acelerada por Hardware (NVIDIA GeForce RTX 3050 Ti Laptop GPU con CUDA).

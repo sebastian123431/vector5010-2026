@@ -1,0 +1,2 @@
+# Compressed archive parts are stored directly in Git.
+/archivos_grandes/** -text -diff

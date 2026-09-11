@@ -1,6 +1,56 @@
-# Publicar cambios en GitHub
+# Proyecto completo en GitHub
 
-Desde esta carpeta, en PowerShell:
+El repositorio incluye el codigo, bases de datos, fotos, memoria, proyectos
+adjuntos, registros y respaldos solicitados por su propietario. Los seis
+modelos y bibliotecas mayores de 49 MiB se guardan completos, comprimidos
+sin perdida y divididos en `archivos_grandes/`. Cada parte es menor de 50 MiB.
+Esta version utiliza Git normal; no necesita Git LFS.
+
+## Descargar y reconstruir los archivos grandes
+
+Necesitas Git, Python 3.10 o posterior y espacio para la copia comprimida y
+los originales reconstruidos. Desde PowerShell:
+
+```powershell
+git clone https://github.com/sebastian123431/vector5010-2026.git
+cd vector5010-2026
+python scripts/archivos_grandes.py restore
+```
+
+El comando restaura automaticamente los modelos en `models/`, las bibliotecas
+en `bin/` y los pesos YOLO en `yolo/`. Verifica SHA-256 de cada parte y del
+archivo completo antes de finalizar. Si un original ya existe y coincide,
+lo conserva; si es distinto, se detiene sin sobrescribirlo.
+
+Para comprobar todas las partes sin escribir los archivos reconstruidos:
+
+```powershell
+python scripts/archivos_grandes.py verify
+```
+
+No borres partes individuales: todas las partes enumeradas en
+`archivos_grandes/manifest.json` son necesarias. Las partes son fragmentos gzip
+independientes; usa el comando anterior para unir el contenido descomprimido
+en el orden correcto.
+
+Los originales siguen intactos en el computador donde se preparo la subida.
+Git los ignora porque su copia completa ya esta en las partes comprimidas.
+Para actualizar un modelo, genera un conjunto nuevo de partes y su manifiesto;
+`pack` se niega a sobrescribir un archivo comprimido existente.
+
+## Ejecutar la aplicacion
+
+Instala las dependencias de `requirements.txt` y consulta `README.md`.
+La clave de Django se obtiene de `DJANGO_SECRET_KEY` o del archivo local
+`.django-secret-key`, excluido de Git junto con `.env`. La clave existente
+se conserva en el computador original. En otro computador configura una
+clave antes de iniciar la aplicacion; por ejemplo, para una sesion local:
+
+```powershell
+$env:DJANGO_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+## Publicar futuros cambios
 
 ```powershell
 git status
@@ -9,36 +59,12 @@ git commit -m "Describe tus cambios"
 git push
 ```
 
-La rama `main` corresponde al repositorio
-https://github.com/sebastian123431/vector5010-2026.
+Cierra la aplicacion antes de guardar nuevas versiones de la base de datos.
+Los archivos temporales SQLite `-wal` y `-shm` no se publican.
 
-## Archivos que se conservan solamente en tu computador
+Las ramas `backup/antes-publicar` y `backup/antes-comprimir` son respaldos
+locales. No las publiques: contienen archivos grandes sin dividir o referencias
+LFS. Usa `git push` para publicar `main`, sin `--all` ni `--mirror`.
 
-El archivo `.gitignore` excluye los modelos `*.gguf`, los pesos `*.weights`,
-los ejecutables y DLL descargados de `bin/`, las bases de datos SQLite,
-fotos, conversaciones, memoria generada, proyectos adjuntos de
-`vectorapp/workspace/`, registros, respaldos y archivos temporales de Python.
-Excluirlos de Git no los elimina del disco. GitHub no es un respaldo de estos
-archivos: conserva una copia por separado si la necesitas.
-
-GitHub bloquea los archivos mayores de 100 MiB en Git normal:
+GitHub limita el tamano de cada archivo en Git normal:
 https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github
-
-Al clonar en otro computador, instala las dependencias de `requirements.txt`,
-coloca las bibliotecas y ejecutables de inferencia en `bin/`, los modelos
-indicados en `models/Modelfile.chat` y `models/Modelfile.embed` en `models/`,
-y los pesos YOLO en `yolo/yolov3.weights`. Ejecuta `python manage.py migrate`
-para crear una base de datos nueva. Consulta `README.md` para ejecutar el proyecto.
-
-La clave de Django se obtiene de `DJANGO_SECRET_KEY` o del archivo local
-`.django-secret-key`, excluido de Git. En un clon nuevo debes configurar uno
-de los dos antes de iniciar la aplicación. Por ejemplo, para una sesión local:
-
-```powershell
-$env:DJANGO_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(50))"
-python manage.py migrate
-```
-
-El commit original anterior a la limpieza se conserva en la rama local
-`backup/antes-publicar`. Esa rama contiene los archivos excluidos y no se debe
-publicar. Para subir el código usa `git push`, sin `--all` ni `--mirror`.

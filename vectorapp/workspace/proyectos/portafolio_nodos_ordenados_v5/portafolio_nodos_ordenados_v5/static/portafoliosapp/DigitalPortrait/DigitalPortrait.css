@@ -1,0 +1,624 @@
+:root {
+  --bio-bg: #020604;
+  --bio-panel: rgba(4, 14, 10, 0.76);
+  --bio-line: rgba(160, 255, 92, 0.18);
+  --bio-text: #f4fff0;
+  --bio-muted: #a8b69e;
+  --node-color: #f4fff0;
+  --graph-color: #d9ffd0;
+  --accent-color: #39ff14;
+  --soft-green: #9dff2f;
+  --rex-orange: #ff8a1c;
+  --rex-blue: #00e6ff;
+  --portrait-progress: 0%;
+  --portrait-saturate: 1;
+  --portrait-contrast: 1;
+  --frame-opacity: 0.18;
+  --pulse-opacity: 0.24;
+  --pulse-opacity-soft: 0.16;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bio-bg);
+  color: var(--bio-text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(57, 255, 20, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 160, 0.045) 1px, transparent 1px),
+    linear-gradient(120deg, transparent 0 46%, rgba(255, 138, 28, 0.035) 47% 49%, transparent 50% 100%),
+    linear-gradient(60deg, transparent 0 46%, rgba(0, 230, 255, 0.035) 47% 49%, transparent 50% 100%),
+    radial-gradient(circle at 76% 52%, rgba(57, 255, 20, 0.17), transparent 23rem),
+    radial-gradient(circle at 68% 28%, rgba(0, 230, 255, 0.1), transparent 16rem),
+    radial-gradient(circle at 22% 72%, rgba(255, 138, 28, 0.08), transparent 14rem),
+    radial-gradient(circle at 14% 82%, rgba(157, 255, 47, 0.09), transparent 18rem),
+    linear-gradient(145deg, #020604 0%, #06130b 48%, #030805 100%);
+  background-size: 52px 52px, 52px 52px, 210px 210px, 240px 240px, auto, auto, auto, auto, auto;
+  overflow: hidden;
+}
+
+body,
+button,
+a {
+  font: inherit;
+}
+
+img {
+  max-width: 100%;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.bio-page {
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.bio-page::before,
+.bio-page::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bio-page::before {
+  left: 52%;
+  top: 9vh;
+  bottom: 7vh;
+  border-left: 1px dashed rgba(247, 255, 251, 0.12);
+}
+
+.bio-page::after {
+  left: 4vw;
+  right: 4vw;
+  bottom: 4.2rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(57, 255, 20, 0.28), rgba(157, 255, 47, 0.22), transparent);
+}
+
+.bio-nav {
+  position: fixed;
+  left: clamp(1rem, 3vw, 2rem);
+  right: clamp(1rem, 3vw, 2rem);
+  top: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  pointer-events: none;
+}
+
+.bio-nav a,
+.bio-nav span {
+  border: 1px solid var(--bio-line);
+  border-radius: 0.4rem;
+  padding: 0.7rem 0.95rem;
+  background: rgba(5, 8, 10, 0.62);
+  color: var(--bio-text);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+.bio-nav span {
+  color: var(--soft-green);
+}
+
+.digitalization {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-grid {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.86fr) minmax(21rem, 1.14fr);
+  align-items: center;
+  gap: clamp(1.2rem, 4.8vw, 5.4rem);
+  width: min(1260px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: clamp(4.7rem, 7vh, 5.8rem) 0 clamp(1rem, 3vh, 2rem);
+}
+
+.portrait-zone {
+  position: relative;
+  justify-self: end;
+  width: min(48vw, 560px, calc(100vh - 7rem));
+  min-width: 19rem;
+  display: grid;
+  place-items: center;
+}
+
+.portrait-stage {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 0.83;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.portrait-stage::before {
+  content: "";
+  position: absolute;
+  inset: 6% -6% 1% 2%;
+  z-index: -2;
+  border: 1px solid rgba(247, 255, 251, 0.08);
+  border-radius: 0.75rem;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(57, 255, 20, 0.16), transparent 44%),
+    linear-gradient(rgba(247, 255, 251, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(247, 255, 251, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: var(--frame-opacity);
+}
+
+.portrait-stage::after {
+  content: "";
+  position: absolute;
+  right: 1%;
+  bottom: 2%;
+  width: 48%;
+  height: 18%;
+  z-index: -1;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+  filter: blur(18px);
+}
+
+.portrait,
+.graph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.portrait {
+  z-index: 1;
+  object-fit: contain;
+  object-position: center;
+  filter: saturate(var(--portrait-saturate)) contrast(var(--portrait-contrast));
+  mask-image: linear-gradient(
+    135deg,
+    transparent 0,
+    transparent calc(var(--portrait-progress) - 18%),
+    rgba(0, 0, 0, 0.48) calc(var(--portrait-progress) - 5%),
+    black calc(var(--portrait-progress) + 13%),
+    black 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    135deg,
+    transparent 0,
+    transparent calc(var(--portrait-progress) - 18%),
+    rgba(0, 0, 0, 0.48) calc(var(--portrait-progress) - 5%),
+    black calc(var(--portrait-progress) + 13%),
+    black 100%
+  );
+}
+
+.orbit-ring {
+  position: absolute;
+  border: 1px solid rgba(57, 255, 20, 0.18);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.orbit-ring::before,
+.orbit-ring::after {
+  content: "";
+  position: absolute;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--soft-green);
+  box-shadow: 0 0 18px rgba(157, 255, 47, 0.72);
+}
+
+.orbit-ring-one {
+  width: 92%;
+  aspect-ratio: 1;
+  opacity: var(--pulse-opacity);
+  animation: rotateRing 28s linear infinite;
+}
+
+.orbit-ring-one::before {
+  left: 12%;
+  top: 19%;
+}
+
+.orbit-ring-one::after {
+  right: 20%;
+  bottom: 12%;
+  background: var(--rex-orange);
+}
+
+.orbit-ring-two {
+  width: 74%;
+  aspect-ratio: 1;
+  opacity: var(--pulse-opacity-soft);
+  transform: rotate(-14deg);
+  animation: rotateRing 36s linear infinite reverse;
+}
+
+.orbit-ring-two::before {
+  right: 16%;
+  top: 10%;
+}
+
+.orbit-ring-two::after {
+  left: 19%;
+  bottom: 16%;
+  background: var(--rex-blue);
+}
+
+@keyframes rotateRing {
+  to { rotate: 360deg; }
+}
+
+.graph {
+  z-index: 2;
+  display: block;
+}
+
+.analysis-canvas {
+  display: none;
+}
+
+.portrait-fallback {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  display: none;
+  width: min(21rem, 86%);
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(0, 217, 255, 0.22);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: rgba(5, 8, 10, 0.86);
+  color: var(--bio-text);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.portrait-fallback strong,
+.portrait-fallback span {
+  display: block;
+}
+
+.portrait-fallback strong {
+  margin-bottom: 0.35rem;
+  font-family: "Space Grotesk", Inter, sans-serif;
+  font-size: 1rem;
+}
+
+.portrait-fallback span {
+  color: var(--bio-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.portrait-stage.is-missing .portrait {
+  display: none;
+}
+
+.portrait-stage.is-missing .portrait-fallback {
+  display: block;
+}
+
+.bio-copy {
+  max-width: 38rem;
+  padding-left: clamp(0rem, 3vw, 1.4rem);
+}
+
+.kicker {
+  margin: 0 0 0.9rem;
+  color: var(--soft-green);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-family: "Space Grotesk", Inter, sans-serif;
+  letter-spacing: 0;
+}
+
+h1 {
+  max-width: 10ch;
+  font-size: clamp(3rem, 6.4vw, 6.1rem);
+  line-height: 0.88;
+}
+
+h2 {
+  max-width: 13ch;
+  font-size: clamp(2rem, 5vw, 4.6rem);
+  line-height: 0.96;
+}
+
+.bio-copy > p:not(.kicker),
+.bio-content > p {
+  color: rgba(247, 255, 251, 0.75);
+  font-size: clamp(0.95rem, 1.18vw, 1.08rem);
+  line-height: 1.55;
+}
+
+.tech-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+}
+
+.tech-tags span {
+  border: 1px solid rgba(157, 255, 47, 0.28);
+  border-radius: 0.35rem;
+  padding: 0.48rem 0.62rem;
+  background: rgba(57, 255, 20, 0.09);
+  color: rgba(244, 255, 240, 0.92);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.bio-summary {
+  display: grid;
+  gap: 0.72rem;
+  margin-top: clamp(1rem, 2.4vh, 1.45rem);
+  max-width: 35rem;
+  border-left: 3px solid rgba(57, 255, 20, 0.72);
+  padding-left: 1rem;
+}
+
+.bio-summary p {
+  margin: 0;
+  color: rgba(247, 255, 251, 0.68);
+  font-size: clamp(0.84rem, 1.02vw, 0.98rem);
+  font-weight: 650;
+  line-height: 1.48;
+}
+
+.progress-readout {
+  position: absolute;
+  right: 3.2%;
+  bottom: 8.8%;
+  z-index: 4;
+  display: grid;
+  gap: 0.1rem;
+  min-width: 8.3rem;
+  border: 1px solid rgba(157, 255, 47, 0.24);
+  border-left-color: rgba(255, 138, 28, 0.42);
+  border-radius: 0.42rem;
+  padding: 0.72rem 0.85rem;
+  background: rgba(5, 14, 8, 0.76);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35), inset 0 0 20px rgba(57, 255, 20, 0.06);
+  backdrop-filter: blur(14px);
+  color: var(--bio-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.progress-readout::before,
+.progress-readout::after {
+  display: none;
+}
+
+.progress-readout span:nth-child(2) {
+  color: var(--accent-color);
+  text-shadow: 0 0 16px rgba(57, 255, 20, 0.32), 0 0 22px rgba(0, 230, 255, 0.16);
+  font-family: "Space Grotesk", Inter, sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .bio-page::before {
+    left: 50%;
+    opacity: 0.5;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: clamp(0.65rem, 2vh, 1rem);
+    padding-top: clamp(4.05rem, 8vh, 5rem);
+    padding-bottom: 0.8rem;
+  }
+
+  .portrait-zone {
+    justify-self: center;
+    width: min(76vw, 390px, 47vh);
+    min-width: 0;
+    order: 2;
+  }
+
+  .bio-copy {
+    order: 1;
+    padding-left: 0;
+  }
+
+  .bio-copy {
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  h1 {
+    max-width: 11ch;
+    font-size: clamp(2.25rem, 10.8vw, 3.6rem);
+  }
+
+  .bio-copy > p:not(.kicker) {
+    max-width: 42rem;
+    font-size: 0.9rem;
+    line-height: 1.42;
+  }
+
+  .tech-tags {
+    margin-top: 0.88rem;
+  }
+
+  .bio-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+    padding-left: 0.78rem;
+  }
+
+  .bio-summary p {
+    font-size: 0.76rem;
+    line-height: 1.34;
+  }
+}
+
+@media (max-width: 560px) {
+  .bio-nav {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 0.75rem;
+  }
+
+  .bio-nav a,
+  .bio-nav span {
+    padding: 0.62rem 0.68rem;
+    font-size: 0.62rem;
+  }
+
+  .hero-grid {
+    width: min(100vw - 1rem, 42rem);
+    padding-top: 4.25rem;
+    align-content: start;
+  }
+
+  .portrait-zone {
+    width: min(94vw, 340px, 46vh);
+  }
+
+  h1 {
+    max-width: 10ch;
+    font-size: clamp(2.25rem, 12vw, 3.25rem);
+  }
+
+  .kicker {
+    margin-bottom: 0.48rem;
+    font-size: 0.62rem;
+    line-height: 1.1;
+  }
+
+  .bio-copy > p:not(.kicker) {
+    margin: 0.7rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .tech-tags {
+    gap: 0.38rem;
+    margin-top: 0.72rem;
+  }
+
+  .tech-tags span {
+    padding: 0.34rem 0.46rem;
+    font-size: 0.58rem;
+  }
+
+  .bio-summary {
+    grid-template-columns: 1fr;
+    gap: 0.42rem;
+    margin-top: 0.72rem;
+    padding-left: 0.66rem;
+  }
+
+  .bio-summary p {
+    font-size: 0.68rem;
+    line-height: 1.28;
+  }
+
+  .progress-readout {
+    right: 4%;
+    bottom: 7%;
+    min-width: 7rem;
+    padding: 0.62rem 0.72rem;
+    font-size: 0.52rem;
+  }
+
+  .progress-readout span:nth-child(2) {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 901px) {
+  .hero-grid {
+    padding-top: 4.2rem;
+    padding-bottom: 0.8rem;
+  }
+
+  .portrait-zone {
+    width: min(43vw, calc(100vh - 6.4rem));
+  }
+
+  h1 {
+    font-size: clamp(2.8rem, 5.6vw, 5rem);
+  }
+
+  .bio-copy > p:not(.kicker) {
+    font-size: 0.92rem;
+    line-height: 1.4;
+  }
+
+  .bio-summary p {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+}
+
+@media (max-height: 680px) and (max-width: 900px) {
+  .bio-nav {
+    top: 0.55rem;
+  }
+
+  .hero-grid {
+    padding-top: 3.7rem;
+  }
+
+  .portrait-zone {
+    width: min(68vw, 330px, 42vh);
+  }
+
+  .bio-summary {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,40 +1,16 @@
-# Python and local environments
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Local configuration and credentials
+# Keep credentials local. Project data and models are included intentionally.
 .env
 .env.*
 !.env.example
 .django-secret-key
-.vscode/
-
-# Downloaded inference binaries and model weights
-/bin/*.dll
-/bin/*.exe
-*.gguf
-*.weights
-
-# Local databases, conversations, photos and generated memory
-*.sqlite3
-*.sqlite3-*
-*.bak
-*.log
-/logs/
-/media/
-/semantic_network.json
-/semantic_network.pkl
-/vectorapp/data/
-/vectorapp/workspace/
-/vectorapp/herramientas/learning_patterns.json
-
-# Generated static files and operating system files
-/staticfiles/
-.DS_Store
-Thumbs.db
+# SQLite lock/cache files are recreated when opening the database.
+*.sqlite3-shm
+*.sqlite3-wal
+# Originals are preserved in archivos_grandes as compressed parts.
+/bin/cublas64_12.dll
+/bin/cublasLt64_12.dll
+/bin/ggml-cuda.dll
+/models/gemma-3-1b-it-Q4_K_M.gguf
+/models/nomic-embed-text-v1.5.Q4_K_M.gguf
+/yolo/yolov3.weights
+*.restaurando

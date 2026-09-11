@@ -1,0 +1,2 @@
+Django==5.2.15
+cryptography>=44,<51
