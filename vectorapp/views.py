@@ -462,20 +462,18 @@ def crear_herramienta_automatica(necesidad_info: Dict[str, Any], usuario=None) -
             )
             
             if resultado['success']:
-                # Registrar en la red neuronal
-                semantic_network.add_memory(
-                    f"HERRAMIENTA CREADA: {necesidad['suggested_tool_name']} - {necesidad['description']}",
-                    "tool_creation"
+                # Registrar herramienta creada en MemoryManager (scope GLOBAL)
+                from .memory import memory_manager
+                ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+                memory_manager.store(
+                    content=f"Creé una nueva herramienta: {necesidad['suggested_tool_name']} - {necesidad['description']}",
+                    memory_type='learning',
+                    scope="GLOBAL",
+                    user_name=ident_id or "interlocutor",
+                    identity_id=ident_id,
+                    sync_to_db=True,
+                    sync_to_network=True
                 )
-                
-                # Crear entrada en memoria si hay usuario
-                if usuario:
-                    from .models import MemoryEntry
-                    MemoryEntry.objects.create(
-                        user=usuario,
-                        content=f"Creé una nueva herramienta: {necesidad['suggested_tool_name']} - {necesidad['description']}",
-                        entry_type='tool_creation'
-                    )
                 
                 return f"¡He creado una nueva herramienta para ti! '{necesidad['suggested_tool_name']}': {necesidad['description']}"
             else:
@@ -526,15 +524,19 @@ def guardar_memoria_importante(mensaje, respuesta, usuario):
     ]
 
     if any(criterio in mensaje.lower() or criterio in respuesta.lower() for criterio in criterios_importantes):
-        contenido = f"Usuario: {usuario.username if usuario else 'Anónimo'}\nMensaje: {mensaje}\nRespuesta: {respuesta}"
-        # Guardar en base de datos
-        MemoryEntry.objects.create(user=usuario, content=contenido, entry_type='fact')
-        # Guardar también en índice FAISS
-        try:
-            store.add_documents([Document(page_content=contenido)])
-            store.save_local(MEMORIA_PATH)
-        except Exception:
-            pass
+        from .memory import memory_manager
+        ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+        scope = "PERSONAL" if ident_id else "SESSION"
+        contenido = f"Mensaje: {mensaje}\nRespuesta: {respuesta}"
+        memory_manager.store(
+            content=contenido,
+            memory_type='fact',
+            user_name=ident_id or "interlocutor",
+            identity_id=ident_id,
+            scope=scope,
+            sync_to_db=True,
+            sync_to_network=(scope == "GLOBAL")
+        )
 
 async def analizar_interacciones_en_segundo_plano(usuario, historial):
     """
@@ -559,10 +561,22 @@ async def analizar_interacciones_en_segundo_plano(usuario, historial):
         if any(criterio in mensaje.lower() or criterio in respuesta.lower() for criterio in criterios_importantes):
             hechos_importantes.append((mensaje, respuesta))
 
-    # Guardar hechos importantes en la base de datos
-    for mensaje, respuesta in hechos_importantes:
-        contenido = f"Usuario: {usuario.username if usuario else 'Anónimo'}\nMensaje: {mensaje}\nRespuesta: {respuesta}"
-        MemoryEntry.objects.create(user=usuario, content=contenido, entry_type='fact')
+    # Guardar hechos importantes a través de MemoryManager con scope adecuado
+    if hechos_importantes:
+        from .memory import memory_manager
+        ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+        scope = "PERSONAL" if ident_id else "SESSION"
+        for mensaje, respuesta in hechos_importantes:
+            contenido = f"Mensaje: {mensaje}\nRespuesta: {respuesta}"
+            memory_manager.store(
+                content=contenido,
+                memory_type='fact',
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                scope=scope,
+                sync_to_db=True,
+                sync_to_network=False
+            )
 
     # Simular procesamiento en segundo plano
     await asyncio.sleep(0.1)
@@ -604,8 +618,19 @@ async def gestionar_memoria_autonomamente(usuario):
             existente.created_at = interaccion.timestamp
             await sync_to_async(existente.save)()
         else:
-            # Crear nuevo recuerdo
-            await sync_to_async(MemoryEntry.objects.create)(user=usuario, content=contenido, entry_type='fact')
+            # Crear nuevo recuerdo vía MemoryManager con scope PERSONAL/SESSION
+            from .memory import memory_manager
+            ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+            scope = "PERSONAL" if ident_id else "SESSION"
+            await sync_to_async(memory_manager.store)(
+                content=contenido,
+                memory_type='fact',
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                scope=scope,
+                sync_to_db=True,
+                sync_to_network=False
+            )
 
     # Eliminar recuerdos redundantes
     for recuerdo in recuerdos:
@@ -1740,22 +1765,19 @@ def preparar_contexto_vector(
                     f"Fecha de registro: {fecha_hora_str}."
                 )
                 try:
-                    MemoryEntry.objects.create(
-                        user=usuario,
+                    from .memory import memory_manager
+                    ident_id = (nombre_interlocutor or interlocutor_ref).lower().strip()
+                    memory_manager.store(
                         content=contenido_mem,
-                        entry_type='visual_identity'
+                        memory_type='fact',
+                        user_name=interlocutor_ref,
+                        identity_id=ident_id,
+                        scope="PERSONAL",
+                        sync_to_db=True,
+                        sync_to_network=False
                     )
-                except Exception as e_db:
-                    logger.warning(f"Aviso guardando MemoryEntry visual: {e_db}")
-
-                # 3. Vincular a la Red Semántica Neuronal (semantic_network)
-                try:
-                    semantic_network.add_memory(
-                        f"IDENTIDAD VISUAL: {interlocutor_ref} ha registrado su fotografía personal ({analisis_visual['faces']['summary']}).",
-                        "visual_identity"
-                    )
-                except Exception as e_net:
-                    logger.warning(f"Aviso agregando memoria visual a red semántica: {e_net}")
+                except Exception as e_mem:
+                    logger.warning(f"Aviso guardando memoria visual en MemoryManager: {e_mem}")
 
                 # 4. Directiva de confirmación y memorización en system_prompt
                 contexto_identidad_visual = (
@@ -2351,43 +2373,54 @@ def limpiar_sesion_chat(request):
 
 def aprender_de_interaccion(interaccion, usuario):
     """
-    Analiza una interacción específica para extraer patrones de aprendizaje.
+    Analiza una interacción específica para extraer patrones de aprendizaje,
+    respetando el aislamiento de scope por interlocutor y sesión en MemoryManager.
     """
     try:
-        # Integrar con red neuronal semántica
-        semantic_network.learn_from_interaction(
-            interaccion.question, 
-            interaccion.answer
-        )
+        from .memory import memory_manager
+        u_name = getattr(interaccion, 'user_name', '') or (usuario.username if (usuario and getattr(usuario, 'username', None)) else '')
+        ident_id = u_name.lower().strip() if u_name else ''
+        sess_id = getattr(interaccion, 'session_id', '') or ''
+        scope = "PERSONAL" if ident_id else ("SESSION" if sess_id else "GLOBAL")
         
-        # Identificar temas clave en la pregunta
+        # Identificar temas clave técnicos en la pregunta
         temas_clave = extraer_temas_clave(interaccion.question)
+        
+        # Solo aprender en la red sináptica si la interacción trata de conceptos técnicos generales
+        if temas_clave and scope == "GLOBAL":
+            semantic_network.learn_from_interaction(
+                interaccion.question, 
+                interaccion.answer
+            )
         
         # Analizar la efectividad de la respuesta
         if any(palabra in interaccion.question.lower() for palabra in ['gracias', 'perfecto', 'excelente', 'bien']):
-            # Respuesta positiva - reforzar este tipo de respuestas
-            MemoryEntry.objects.create(
-                user=usuario,
+            # Respuesta positiva - reforzar este tipo de respuestas en MemoryManager con scope adecuado
+            memory_manager.store(
                 content=f"RESPUESTA_EXITOSA: {interaccion.question[:100]}... -> {interaccion.answer[:100]}...",
-                entry_type='learning'
-            )
-            
-            # Fortalecer conexiones en la red neuronal
-            semantic_network.learn_from_interaction(
-                interaccion.question, 
-                interaccion.answer,
-                feedback="positivo"
+                memory_type='learning',
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                session_id=sess_id,
+                scope=scope,
+                sync_to_db=True,
+                sync_to_network=False
             )
         
-        # Guardar patrones de conversación
+        # Guardar patrones de conversación en MemoryManager con scope adecuado
         if temas_clave:
-            MemoryEntry.objects.create(
-                user=usuario,
+            memory_manager.store(
                 content=f"TEMAS: {', '.join(temas_clave)} | CONTEXTO: {interaccion.question[:50]}...",
-                entry_type='pattern'
+                memory_type='pattern',
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                session_id=sess_id,
+                scope=scope,
+                sync_to_db=True,
+                sync_to_network=False
             )
             
-            # Añadir temas a la red neuronal
+            # Añadir temas técnicos universales a la red neuronal global
             for tema in temas_clave:
                 semantic_network.add_memory(f"TEMA: {tema}", "concept")
             
@@ -2434,11 +2467,18 @@ def gestionar_memoria_inteligente(mensaje, respuesta, usuario):
     # Solo guardar si tiene relevancia suficiente
     if relevancia_score >= 2:
         try:
+            from .memory import memory_manager
+            ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+            scope = "PERSONAL" if ident_id else "SESSION"
             contenido = f"RELEVANCIA_{relevancia_score}: P:{mensaje[:100]}... R:{respuesta[:100]}..."
-            MemoryEntry.objects.create(
-                user=usuario, 
-                content=contenido, 
-                entry_type='important'
+            memory_manager.store(
+                content=contenido,
+                memory_type='important',
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                scope=scope,
+                sync_to_db=True,
+                sync_to_network=False
             )
         except Exception as e:
             print(f"Error en memoria inteligente: {e}")
@@ -2464,15 +2504,22 @@ async def analizar_y_aprender_de_interacciones(usuario):
             for tema in temas:
                 temas_frecuentes[tema] = temas_frecuentes.get(tema, 0) + 1
         
-        # Guardar patrones de aprendizaje
+        # Guardar patrones de aprendizaje en MemoryManager con scope adecuado
         if temas_frecuentes:
             temas_top = sorted(temas_frecuentes.items(), key=lambda x: x[1], reverse=True)[:3]
             patron_contenido = f"PATRONES_FRECUENTES: {', '.join([f'{tema}({freq})' for tema, freq in temas_top])}"
             
-            await sync_to_async(MemoryEntry.objects.create)(
-                user=usuario,
+            from .memory import memory_manager
+            ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+            scope = "PERSONAL" if ident_id else "SESSION"
+            await sync_to_async(memory_manager.store)(
                 content=patron_contenido,
-                entry_type='pattern'
+                memory_type='pattern',
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                scope=scope,
+                sync_to_db=True,
+                sync_to_network=False
             )
         
         # Limpiar memoria antigua menos relevante
@@ -2867,14 +2914,19 @@ def create_dynamic_tool(request):
                 "manual_tool_creation"
             )
             
-            # Guardar memoria si hay usuario
+            # Guardar memoria vía MemoryManager (scope GLOBAL)
+            from .memory import memory_manager
             usuario = request.user if request.user.is_authenticated else None
-            if usuario:
-                MemoryEntry.objects.create(
-                    user=usuario,
-                    content=f"Creaste una herramienta: {necesidad['tool_name']} - {necesidad['description']}",
-                    entry_type='tool_creation'
-                )
+            ident_id = usuario.username.lower().strip() if (usuario and getattr(usuario, "username", None)) else ""
+            memory_manager.store(
+                content=f"Herramienta creada: {necesidad['tool_name']} - {necesidad['description']}",
+                memory_type='learning',
+                scope="GLOBAL",
+                user_name=ident_id or "interlocutor",
+                identity_id=ident_id,
+                sync_to_db=True,
+                sync_to_network=True
+            )
             
             return Response({
                 "mensaje": "Herramienta creada exitosamente",

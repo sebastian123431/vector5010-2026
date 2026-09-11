@@ -34,3 +34,12 @@ class VectorAppConfig(AppConfig):
                 logger.info("[VectorApp] Motores locales de inferencia y embeddings verificados.")
             except Exception as e:
                 logger.warning(f"[VectorApp] Aviso al iniciar motores locales: {e}")
+
+        # Bootstrap de memoria vectorial (FAISS/NumPy) desde base de datos relacional
+        import sys
+        if 'test' not in sys.argv:
+            try:
+                from .memory import memory_manager
+                memory_manager.bootstrap()
+            except Exception as e_boot:
+                logger.debug(f"[VectorApp] Aviso en bootstrap de memoria: {e_boot}")

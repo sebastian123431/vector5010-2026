@@ -24,7 +24,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+          sudo apt-get install -y libgl1 libglib2.0-0
 
       - name: Install Python Dependencies
         run: |
@@ -32,15 +32,29 @@ jobs:
           pip install -r requirements.txt
 
       - name: Django System Check
+        env:
+          DJANGO_SETTINGS_MODULE: vector5010.settings
+          DJANGO_SECRET_KEY: ci-secret-key-vector-2026-github-actions
         run: |
           python manage.py check
 
+      - name: Verify No Missing Migrations
+        env:
+          DJANGO_SETTINGS_MODULE: vector5010.settings
+          DJANGO_SECRET_KEY: ci-secret-key-vector-2026-github-actions
+        run: |
+          python manage.py makemigrations --check --dry-run
+
       - name: Run Django Migrations (SQLite Test DB)
+        env:
+          DJANGO_SETTINGS_MODULE: vector5010.settings
+          DJANGO_SECRET_KEY: ci-secret-key-vector-2026-github-actions
         run: |
           python manage.py migrate --noinput
 
       - name: Run Full Test Suite
         env:
           DJANGO_SETTINGS_MODULE: vector5010.settings
+          DJANGO_SECRET_KEY: ci-secret-key-vector-2026-github-actions
         run: |
           python manage.py test tests/ --verbosity=2

@@ -32,10 +32,13 @@
   {
     "id": "memory_05",
     "type": "metrics",
-    "retrieved_ids": ["doc1", "doc2", "doc3", "doc4", "doc5"],
-    "relevant_ids": ["doc2", "doc5"],
     "k": 3,
     "min_p_at_k": 0.3,
     "min_mrr": 0.5
+  },
+  {
+    "id": "memory_06",
+    "type": "faiss_restart",
+    "description": "Validación de persistencia y reconstrucción FAISS tras reinicio completo"
   }
 ]

@@ -30,8 +30,15 @@ class CognitiveCritic:
     Evaluador crítico de respuestas generadas por el sistema cognitivo.
     """
 
-    @staticmethod
-    def evaluate_response(response: str, query: str = "", interlocutor: str = "Sebastian") -> CriticEvaluation:
+    @classmethod
+    def evaluate_response(
+        cls,
+        response: str,
+        query: str = "",
+        interlocutor: str = "Sebastian",
+        execution: Optional[Dict[str, Any]] = None,
+        verification: Optional[Dict[str, Any]] = None
+    ) -> CriticEvaluation:
         feedback = []
         suggestions = []
         score = 1.0
@@ -40,6 +47,18 @@ class CognitiveCritic:
             return CriticEvaluation(score=0.0, passed=False, feedback=["Respuesta vacía."], suggestions=["Generar respuesta válida."])
 
         resp_clean = response.strip()
+
+        # 0. Evaluación de fallo en ejecución y verificación post-ejecución
+        if execution and not execution.get("success", True):
+            score -= 0.40
+            feedback.append("La ejecución del plan falló o contiene pasos con error.")
+            suggestions.append("Revisar los pasos fallidos en la ejecución de herramientas antes de validar la respuesta.")
+
+        if verification and not verification.get("passed", True):
+            score -= 0.40
+            findings_str = ", ".join(verification.get("findings", []))
+            feedback.append(f"La verificación post-ejecución detectó anomalías: {findings_str}")
+            suggestions.append("Corregir las fallas de verificación estructural o sintáctica detectadas.")
 
         # 1. Detección de auto-saludo absurdo ("Hola Vector")
         if re.search(r'\b(hola|buenos días|buenas tardes)\s+vector\b', resp_clean, re.IGNORECASE):

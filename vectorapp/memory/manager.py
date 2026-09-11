@@ -150,7 +150,7 @@ class MemoryManager:
                 min_score=min_score,
                 filter_type=filter_type,
                 session_id=session_id,
-                user_name=user_name
+                user_name=norm_user
             )
             for item, score in scored_items:
                 results.append({
@@ -170,7 +170,7 @@ class MemoryManager:
                 db_entries = MemoryEntry.recall(
                     query=query,
                     top_k=top_k,
-                    identity_id=user_name,
+                    identity_id=norm_user,
                     session_id=session_id
                 )
                 for entry in db_entries:
@@ -227,7 +227,87 @@ class MemoryManager:
 
     def clear(self) -> int:
         """Limpia la memoria del backend."""
+        self._bootstrapped = False
         return self.backend.clear()
+
+    def bootstrap(self, force: bool = False, max_entries: Optional[int] = None) -> int:
+        """
+        Reconstruye o puebla el índice en RAM (FAISS/NumPy) a partir de los registros
+        persistidos en la base de datos relacional (MemoryEntry).
+        Garantiza idempotencia, evita duplicados y reutiliza vectores cacheados sin regenerar embeddings.
+        """
+        import time
+        if getattr(self, "_bootstrapped", False) and not force:
+            logger.debug("[MemoryManager] Bootstrap omitido: índice ya poblado previamente.")
+            return self.backend.count()
+
+        t0 = time.perf_counter()
+        loaded_count = 0
+        try:
+            from vectorapp.models import MemoryEntry
+            qs = MemoryEntry.objects.all().order_by("id")
+            if max_entries is not None and max_entries > 0:
+                qs = qs[:max_entries]
+
+            # Set de IDs ya existentes en el backend para evitar duplicados
+            existing_ids = set()
+            if hasattr(self.backend, "items"):
+                existing_ids = set(self.backend.items.keys())
+
+            for entry in qs:
+                str_id = str(entry.id)
+                if str_id in existing_ids:
+                    continue
+
+                # 1. Recuperar vector serializado existente en SQLite sin recalcular en frío
+                vec = None
+                try:
+                    raw_vec = entry.get_vector()
+                    if raw_vec is not None and len(raw_vec) == self.dimension:
+                        vec = [float(x) for x in raw_vec]
+                except Exception:
+                    vec = None
+
+                # 2. Reconstruir tipo de memoria
+                try:
+                    m_type = MemoryType(entry.entry_type)
+                except Exception:
+                    m_type = MemoryType.SEMANTIC
+
+                item = MemoryItem(
+                    id=str_id,
+                    content=entry.content,
+                    vector=vec,
+                    memory_type=m_type,
+                    importance=getattr(entry, 'importance', 0.5),
+                    confidence=getattr(entry, 'confidence', 1.0),
+                    user_name=entry.identity_id or (entry.user.username if getattr(entry, 'user', None) else ""),
+                    session_id=entry.session_id or "",
+                    metadata={
+                        "scope": entry.scope,
+                        "identity_id": entry.identity_id,
+                        "source": getattr(entry, 'source', 'db_bootstrap')
+                    }
+                )
+                self.backend.add(item)
+                existing_ids.add(str_id)
+                loaded_count += 1
+
+            self._bootstrapped = True
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            logger.info(
+                f"[MemoryManager] Bootstrap completado: {loaded_count} recuerdos cargados en {elapsed_ms:.2f}ms. "
+                f"Total en índice: {self.backend.count()}"
+            )
+        except Exception as e:
+            logger.warning(f"[MemoryManager] Aviso durante bootstrap de memoria: {e}")
+
+        return loaded_count
+
+    def rebuild_from_database(self) -> int:
+        """Alias explícito para reconstruir el índice desde la base de datos."""
+        self.clear()
+        return self.bootstrap(force=True)
 
     def stats(self) -> Dict[str, Any]:
         """Retorna estadísticas operativas completas del subsistema de memoria."""
@@ -248,6 +328,7 @@ class MemoryManager:
         return {
             "backend_count": self.backend.count(),
             "backend_type": type(self.backend).__name__,
+            "bootstrapped": getattr(self, "_bootstrapped", False),
             "db_entries_count": db_count,
             "semantic_network_neurons": network_neurons,
             "dimension": self.dimension,

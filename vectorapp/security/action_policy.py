@@ -28,12 +28,68 @@ class PendingAction:
     created_at: float
     expires_at: float
     consumed: bool = False
+    endpoint: Optional[str] = None
+
+
+def canonicalize_action_parameters(request: Any = None, kwargs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Extrae de forma canónica y determinista los parámetros funcionales de una petición o contexto,
+    excluyendo tokens de confirmación y banderas de control.
+    """
+    params: Dict[str, Any] = {}
+    EXCLUDED_KEYS = {
+        "pending_action_id", "action_id", "confirm", "confirm_action",
+        "confirmed", "force", "csrfmiddlewaretoken"
+    }
+
+    # 1. Path parameters (kwargs de URL de Django / DRF)
+    if kwargs:
+        for k, v in kwargs.items():
+            if k not in EXCLUDED_KEYS and v is not None:
+                params[str(k)] = v if isinstance(v, (int, float, bool)) else str(v)
+
+    if request is not None:
+        # 2. Query parameters / GET
+        if hasattr(request, "GET") and request.GET:
+            for k, v in request.GET.items():
+                if k not in EXCLUDED_KEYS:
+                    params[str(k)] = str(v)
+
+        # 3. Request data (DRF) o POST
+        data = getattr(request, "data", None)
+        if data is None and hasattr(request, "POST"):
+            data = request.POST
+
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if k not in EXCLUDED_KEYS:
+                    if isinstance(v, (str, int, float, bool)) or v is None:
+                        params[str(k)] = v
+                    elif isinstance(v, (list, dict)):
+                        try:
+                            params[str(k)] = json.loads(json.dumps(v, sort_keys=True))
+                        except Exception:
+                            params[str(k)] = str(v)
+                    else:
+                        params[str(k)] = str(v)
+        elif hasattr(request, "body") and request.body:
+            try:
+                body_dict = json.loads(request.body)
+                if isinstance(body_dict, dict):
+                    for k, v in body_dict.items():
+                        if k not in EXCLUDED_KEYS:
+                            params[str(k)] = v
+            except Exception:
+                pass
+
+    return {k: params[k] for k in sorted(params.keys())}
 
 
 class PendingActionManager:
     """
     Gestor de acciones pendientes que requieren confirmación criptográfica o UUID.
-    Garantiza que una confirmación esté ligada a una acción concreta y sea de un solo uso (consumed=True).
+    Garantiza que una confirmación esté ligada a una acción concreta, a sus parámetros,
+    a su endpoint y sea estrictamente de un solo uso (consumed=True).
     """
 
     def __init__(self, default_ttl_seconds: int = 300, ttl_seconds: Optional[int] = None):
@@ -45,13 +101,15 @@ class PendingActionManager:
         self,
         action_type: str,
         parameters: Optional[Dict[str, Any]] = None,
-        ttl_seconds: Optional[int] = None
+        ttl_seconds: Optional[int] = None,
+        endpoint: Optional[str] = None
     ) -> str:
-        """Registra una acción pendiente y retorna su UUID."""
+        """Registra una acción pendiente ligada a sus parámetros canónicos y endpoint."""
         ttl = ttl_seconds or self.default_ttl
         action_id = str(uuid.uuid4())
         now = time.time()
-        p_bytes = json.dumps(parameters or {}, sort_keys=True).encode("utf-8")
+        canonical_params = parameters if parameters is not None else {}
+        p_bytes = json.dumps(canonical_params, sort_keys=True).encode("utf-8")
         p_hash = hashlib.sha256(p_bytes).hexdigest()
 
         action = PendingAction(
@@ -60,7 +118,8 @@ class PendingActionManager:
             parameters_hash=p_hash,
             created_at=now,
             expires_at=now + ttl,
-            consumed=False
+            consumed=False,
+            endpoint=endpoint
         )
 
         with self._lock:
@@ -77,20 +136,26 @@ class PendingActionManager:
         self,
         action_type: str,
         parameters: Optional[Dict[str, Any]] = None,
-        ttl_seconds: Optional[int] = None
+        ttl_seconds: Optional[int] = None,
+        endpoint: Optional[str] = None
     ) -> str:
         """Alias conveniente para create_pending_action."""
-        return self.create_pending_action(action_type, parameters, ttl_seconds)
+        return self.create_pending_action(action_type, parameters, ttl_seconds, endpoint=endpoint)
 
     def validate_and_consume(
         self,
         action_id: str,
         action_type: Optional[str] = None,
-        parameters: Optional[Dict[str, Any]] = None
+        parameters: Optional[Dict[str, Any]] = None,
+        endpoint: Optional[str] = None
     ) -> Tuple[bool, Optional[str]]:
         """
-        Valida exhaustivamente y consume una acción pendiente.
-        Retorna (is_valid, error_message).
+        Valida exhaustivamente y consume una acción pendiente:
+        - Verifica existencia, vigencia y expiración.
+        - Protege contra reutilización de tokens (replay attack).
+        - Verifica concordancia del tipo de acción.
+        - Verifica concordancia del endpoint de destino.
+        - Verifica concordancia criptográfica (SHA-256) de los parámetros de la operación.
         """
         if not action_id:
             return False, "action_id no proporcionado"
@@ -102,20 +167,23 @@ class PendingActionManager:
                 return False, f"Acción '{action_id}' no encontrada o ya fue ejecutada (consumed=True)"
 
             if action.consumed:
-                return False, f"La acción '{action_id}' ya fue ejecutada previamente"
+                return False, f"La acción '{action_id}' ya fue ejecutada previamente (replay attack prevenido)"
 
             if action.expires_at < now:
                 del self._actions[action_id]
                 return False, f"La acción '{action_id}' ha expirado"
 
             if action_type and action.action_type != action_type:
-                return False, f"Discordancia de tipo de acción: esperada '{action_type}', recibida '{action.action_type}'"
+                return False, f"Discordancia de tipo de acción: esperada '{action_type}', registrada '{action.action_type}'"
+
+            if endpoint and action.endpoint and action.endpoint != endpoint:
+                return False, f"Discordancia de endpoint: esperado '{endpoint}', registrado '{action.endpoint}'"
 
             if parameters is not None:
                 p_bytes = json.dumps(parameters, sort_keys=True).encode("utf-8")
                 p_hash = hashlib.sha256(p_bytes).hexdigest()
                 if action.parameters_hash != p_hash:
-                    return False, "Los parámetros de la acción confirmada no coinciden con los registrados"
+                    return False, "Los parámetros de la acción confirmada no coinciden con los registrados (parameter mismatch)"
 
             action.consumed = True
             del self._actions[action_id]
@@ -124,10 +192,17 @@ class PendingActionManager:
     def verify_and_consume(
         self,
         action_id: str,
-        action_type: Optional[str] = None
+        action_type: Optional[str] = None,
+        parameters: Optional[Dict[str, Any]] = None,
+        endpoint: Optional[str] = None
     ) -> bool:
         """Verifica y consume un token de acción pendiente en una sola operación atómica."""
-        valid, _ = self.validate_and_consume(action_id, action_type=action_type)
+        valid, _ = self.validate_and_consume(
+            action_id,
+            action_type=action_type,
+            parameters=parameters,
+            endpoint=endpoint
+        )
         return valid
 
 
@@ -174,17 +249,30 @@ def _extract_pending_action_id(request: Any) -> Optional[str]:
     return None
 
 
-def _is_action_confirmed(request: Any, action_name: str) -> bool:
+def _is_action_confirmed(
+    request: Any,
+    action_name: str,
+    parameters: Optional[Dict[str, Any]] = None,
+    endpoint: Optional[str] = None
+) -> bool:
     """
-    Verifica si la petición incluye confirmación explícita o un pending_action_id válido.
+    Verifica si la petición incluye confirmación explícita o un pending_action_id válido
+    ligado a los parámetros de la acción.
     """
     # 1. Verificar si viene con pending_action_id válido
     pending_id = _extract_pending_action_id(request)
     if pending_id:
-        if pending_action_manager.verify_and_consume(pending_id, action_type=action_name):
+        if pending_action_manager.verify_and_consume(
+            pending_id,
+            action_type=action_name,
+            parameters=parameters,
+            endpoint=endpoint
+        ):
             return True
+        else:
+            return False
 
-    # 2. Cabecera HTTP directa
+    # 2. Cabecera HTTP directa (fallback de compatibilidad)
     header_val = getattr(request, "headers", {}).get("X-Action-Confirmed") or getattr(request, "META", {}).get("HTTP_X_ACTION_CONFIRMED")
     if header_val and str(header_val).lower() in ("true", "1", "yes"):
         return True
@@ -229,15 +317,22 @@ def require_action_confirmation(action_name: str = "acción crítica"):
     """
     Decorador para endpoints y operaciones destructivas o de alto impacto.
     Exige confirmación explícita de la acción de forma completamente imparcial.
-    Genera un pending_action_id de un solo uso para flujos interactivos.
+    Genera un pending_action_id de un solo uso ligado estrictamente a los parámetros concretos.
     """
     def decorator(view_func: Callable) -> Callable:
         @wraps(view_func)
         def _wrapped(request: Any, *args, **kwargs) -> Any:
-            if not _is_action_confirmed(request, action_name):
+            canonical_params = canonicalize_action_parameters(request, kwargs)
+            endpoint_path = getattr(request, "path", None)
+
+            if not _is_action_confirmed(request, action_name, parameters=canonical_params, endpoint=endpoint_path):
                 logger.warning(f"[ActionPolicy] Acción '{action_name}' bloqueada: requiere confirmación explícita.")
-                # Generar pending_action_id ligado a esta acción
-                pending_id = pending_action_manager.create_pending_action(action_type=action_name)
+                # Generar pending_action_id ligado a estos parámetros y endpoint
+                pending_id = pending_action_manager.create_pending_action(
+                    action_type=action_name,
+                    parameters=canonical_params,
+                    endpoint=endpoint_path
+                )
                 return Response(
                     {
                         "success": False,
@@ -246,8 +341,8 @@ def require_action_confirmation(action_name: str = "acción crítica"):
                         "pending_action_id": pending_id,
                         "message": (
                             f"La operación '{action_name}' es de alto impacto en el sistema y requiere "
-                            f"confirmación explícita. Para proceder, envíe 'confirm': true o "
-                            f"'pending_action_id': '{pending_id}' en el cuerpo de la solicitud."
+                            f"confirmación explícita. Para proceder, envíe 'pending_action_id': '{pending_id}' "
+                            f"o 'confirm': true en la solicitud con los mismos parámetros."
                         )
                     },
                     status=400

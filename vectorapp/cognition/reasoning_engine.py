@@ -48,40 +48,49 @@ class ReasoningEngine:
         # 1. Planificación adaptativa
         plan = self.planner.create_plan(query, context=context)
 
-        # 2. Verificación de Seguridad preventiva
-        safety_check = self.verifier.verify_safety(query)
+        # 2. Verificación de Seguridad preventiva (Pre-Execution Safety)
+        pre_safety = self.verifier.verify_safety(query)
 
         # 3. Ejecución del plan (supervisada o dry-run según el modo)
-        if safety_check["safe"]:
+        if pre_safety["safe"]:
             exec_res = self.executor.execute_plan(plan, dry_run=dry_run)
         else:
             exec_res = {
                 "success": False,
                 "completed_count": 0,
                 "total_steps": len(plan.steps),
-                "trace": [{"status": "blocked", "reason": "Bloqueado por verificación de seguridad."}]
+                "trace": [{"status": "blocked", "reason": "Bloqueado por verificación de seguridad preventiva."}]
             }
 
-        # 4. Evaluación crítica del borrador de respuesta (si se proporciona)
+        # 4. Verificación Post-Ejecución (Post-Execution Verification)
+        verification_res = self.verifier.verify_execution(plan, exec_res, context=context)
+
+        # 5. Evaluación crítica del borrador de respuesta (si se proporciona)
         critic_res: Optional[CriticEvaluation] = None
         if draft_response:
             critic_res = self.critic.evaluate_response(
                 draft_response,
                 query=query,
-                interlocutor=interlocutor
+                interlocutor=interlocutor,
+                execution=exec_res,
+                verification=verification_res
             )
 
+        overall_success = pre_safety["safe"] and exec_res.get("success", False) and verification_res.get("passed", False)
+
         return {
-            "success": safety_check["safe"] and exec_res["success"],
+            "success": overall_success,
             "mode": mode.value if isinstance(mode, ReasoningMode) else str(mode),
             "query": query,
             "interlocutor": interlocutor,
-            "safety": safety_check,
-            "verifier": safety_check,
+            "pre_safety": pre_safety,
+            "safety": pre_safety,             # Compatibilidad retroactiva
+            "verification": verification_res, # Verificación post-ejecución real
+            "verifier": verification_res,     # Clave separada de pre-safety
             "plan": plan.to_dict(),
             "execution": exec_res,
             "critic": critic_res.to_dict() if critic_res else None,
-            "approved": safety_check["safe"] and (critic_res.passed if critic_res else True)
+            "approved": overall_success and (critic_res.passed if critic_res else True)
         }
 
 

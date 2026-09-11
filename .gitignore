@@ -15,6 +15,7 @@ logs/
 # Runtime
 runtime/
 tool_workspace/
+vectorapp/workspace/
 
 # IDE
 .vscode/

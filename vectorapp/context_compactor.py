@@ -153,16 +153,27 @@ class ContextCompactor:
             if hasattr(session, "modified"):
                 session.modified = True
 
-        # Asimilación selectiva en la Red Neuronal Semántica solo para Sebastian
-        if semantic_network and hasattr(semantic_network, "add_memory") and nuevo_resumen and interlocutor_ref == "Sebastian":
+        # Almacenamiento neutral y aislado en MemoryManager (scope SESSION o PERSONAL)
+        if nuevo_resumen:
             try:
+                from .memory import memory_manager
+                sess_id = session.get("session_id", "") if (session and hasattr(session, "get")) else ""
+                ident_id = (interlocutor_ref or "").lower().strip()
                 conceptos_clave = cls.extract_key_concepts(nuevo_resumen)
                 conceptos_tag = f" [Conceptos: {', '.join(conceptos_clave[:6])}]" if conceptos_clave else ""
-                memory_text = f"CONVERSACION CONSOLIDADA SEBASTIAN: {nuevo_resumen[:280]}{conceptos_tag}"
-                semantic_network.add_memory(memory_text, "conversation_synapse")
-                logger.info("[ContextCompactor] Hilo de conversación asimilado exitosamente en red neuronal sináptica.")
-            except Exception as e_synapse:
-                logger.warning(f"[ContextCompactor] Aviso al asimilar en red sináptica: {e_synapse}")
+                memory_text = f"CONVERSACION CONSOLIDADA {interlocutor_ref.upper()}: {nuevo_resumen[:280]}{conceptos_tag}"
+                memory_manager.store(
+                    content=memory_text,
+                    memory_type='episodic',
+                    user_name=interlocutor_ref,
+                    identity_id=ident_id,
+                    session_id=sess_id,
+                    scope="SESSION" if sess_id else "PERSONAL",
+                    sync_to_db=True,
+                    sync_to_network=False
+                )
+            except Exception as e_mem:
+                logger.debug(f"[ContextCompactor] Aviso guardando resumen consolidado en MemoryManager: {e_mem}")
 
         # Formatear la cápsula para el system_prompt
         capsule_context = (

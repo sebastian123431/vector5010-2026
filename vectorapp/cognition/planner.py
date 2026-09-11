@@ -75,20 +75,27 @@ class CognitivePlanner:
         """
         g_lower = goal.lower()
 
-        # 1. Si es análisis de proyecto ZIP / código
-        if any(w in g_lower for w in ("zip", "proyecto", "diagnosticar", "ast")):
+        ctx = context or {}
+        zip_params = {k: v for k, v in ctx.items() if k in ("file_path", "zip_source", "project_name", "target_dir")}
+        if not zip_params and "file" in ctx:
+            zip_params["file_path"] = ctx["file"]
+
+        # 1. Si es análisis de proyecto ZIP / archivo comprimido
+        if "zip" in g_lower or ("proyecto" in g_lower and zip_params) or ("archivo" in g_lower and zip_params):
             steps = [
                 PlanStep(
                     step_number=1,
                     title="Extracción y Validación Segura de Archivos",
                     description="Descomprimir y verificar cuotas de seguridad y protección anti-ZipBomb.",
-                    required_tool="extract_zip"
+                    required_tool="extract_zip",
+                    input_data=dict(zip_params) if zip_params else None
                 ),
                 PlanStep(
                     step_number=2,
                     title="Inspección Estructural y Parsing AST",
                     description="Analizar funciones, clases y errores de sintaxis en el AST.",
-                    dependencies=[1]
+                    dependencies=[1],
+                    input_data=dict(zip_params) if zip_params else None
                 ),
                 PlanStep(
                     step_number=3,
@@ -105,14 +112,39 @@ class CognitivePlanner:
             ]
             return CognitivePlan(goal=goal, steps=steps, estimated_complexity="intensive")
 
+        # 1.1 Si es diagnóstico / refactorización de código sin archivo ZIP
+        if any(w in g_lower for w in ("diagnosticar", "refactorizar", "codigo", "código", "modulo", "módulo", "ast")):
+            steps = [
+                PlanStep(
+                    step_number=1,
+                    title="Inspección Estructural y Parsing AST",
+                    description="Analizar funciones, clases y árbol sintáctico del módulo.",
+                ),
+                PlanStep(
+                    step_number=2,
+                    title="Auditoría de Patrones y Seguridad",
+                    description="Identificar anomalías, complejidad ciclomática y buenas prácticas.",
+                    dependencies=[1]
+                ),
+                PlanStep(
+                    step_number=3,
+                    title="Generación de Diagnóstico y Plan de Refactorización",
+                    description="Elaborar recomendaciones técnicas y código refactorizado.",
+                    dependencies=[2]
+                )
+            ]
+            return CognitivePlan(goal=goal, steps=steps, estimated_complexity="moderate")
+
         # 2. Si es investigación web con contraste
+        web_params = {k: v for k, v in ctx.items() if k in ("query", "max_results", "lugar", "categoria")}
         if any(w in g_lower for w in ("investigar", "noticias", "buscar en internet", "clima")):
             steps = [
                 PlanStep(
                     step_number=1,
                     title="Búsqueda Web Resiliente Multi-sitio",
                     description="Consultar fuentes oficiales verificadas con prioridad chilena (.cl).",
-                    required_tool="web_search"
+                    required_tool="web_search",
+                    input_data=dict(web_params) if web_params else None
                 ),
                 PlanStep(
                     step_number=2,

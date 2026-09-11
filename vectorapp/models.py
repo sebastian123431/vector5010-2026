@@ -42,6 +42,7 @@ class MemoryEntry(models.Model):
             ('PERSONAL', 'Personal'),
             ('SESSION',  'Session'),
             ('PROJECT',  'Project'),
+            ('LEGACY',   'Legacy'),
         ],
         default='GLOBAL'
     )
@@ -112,7 +113,9 @@ class MemoryEntry(models.Model):
             from django.db.models import Q
             qs = qs.filter(Q(scope="GLOBAL") | Q(scope=""))
 
-        entries = list(qs[:limit]) if (limit is not None and limit > 0) else list(qs)
+        from django.conf import settings
+        max_candidates = limit if (limit is not None and limit > 0) else getattr(settings, 'SQLITE_FALLBACK_CANDIDATES', 150)
+        entries = list(qs.order_by('-created_at')[:max_candidates])
         if not entries:
             return []
 

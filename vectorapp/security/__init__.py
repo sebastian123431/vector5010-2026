@@ -32,6 +32,7 @@ from .action_policy import (
     read_only_endpoint,
     pending_action_manager,
     PendingActionManager,
+    canonicalize_action_parameters,
 )
 from .user_profile import (
     UserProfile,
@@ -63,6 +64,7 @@ __all__ = [
     "read_only_endpoint",
     "pending_action_manager",
     "PendingActionManager",
+    "canonicalize_action_parameters",
     "UserProfile",
     "resolve_user_profile",
 ]

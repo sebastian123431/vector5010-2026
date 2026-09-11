@@ -42,7 +42,11 @@ class PlanExecutor:
                 continue
 
             step.status = StepStatus.RUNNING
-            step.input_data = {"description": step.description, "tool": step.required_tool}
+            if step.input_data is None:
+                step.input_data = {"description": step.description, "tool": step.required_tool}
+            elif isinstance(step.input_data, dict):
+                step.input_data.setdefault("description", step.description)
+                step.input_data.setdefault("tool", step.required_tool)
 
             if dry_run:
                 step.status = StepStatus.COMPLETED
@@ -73,9 +77,35 @@ class PlanExecutor:
                             })
                             continue
 
-                        res = self.tool_runner(step.required_tool, {"description": step.description})
+                        tool_input = dict(step.input_data) if isinstance(step.input_data, dict) else {}
+                        tool_input.setdefault("description", step.description)
+                        res = self.tool_runner(step.required_tool, tool_input)
                         step.result = res
                         step.output_data = res
+
+                        # Validación estricta del resultado de la herramienta
+                        tool_failed = False
+                        tool_err_msg = None
+                        if isinstance(res, dict):
+                            if res.get("success") is False:
+                                tool_failed = True
+                                tool_err_msg = res.get("error") or "tool returned failure status"
+                        elif hasattr(res, "success"):
+                            if not res.success:
+                                tool_failed = True
+                                tool_err_msg = getattr(res, "error", None) or "tool returned failure status"
+
+                        if tool_failed:
+                            step.status = StepStatus.FAILED
+                            step.error = tool_err_msg
+                            step.latency_ms = (time.perf_counter() - t0) * 1000.0
+                            execution_trace.append({
+                                "step": step.step_number,
+                                "status": "failed",
+                                "error": tool_err_msg,
+                                "latency_ms": round(step.latency_ms, 2)
+                            })
+                            continue
                     else:
                         step.result = f"Paso cognitivo completado: {step.title}"
                         step.output_data = step.result
