@@ -7,10 +7,14 @@ y gestiona la caché en memoria para minimizar la latencia de respuesta.
 import re
 import time
 import math
+import json
+import logging
 from typing import Dict, Any, Optional, Tuple, List, Set
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 class QueryComplexity(Enum):
     """Niveles de complejidad de consultas."""
@@ -31,6 +35,61 @@ class IntentCategory(str, Enum):
     PROJECT_ANALYSIS = "project_analysis"
     DATABASE = "database"
     SYSTEM = "system"
+
+INTENT_PROTOTYPES: Dict[IntentCategory, List[str]] = {
+    IntentCategory.CASUAL: [
+        "hola qué tal cómo estás saludos cordiales",
+        "buenos días un saludo cordial hasta luego adiós gracias",
+    ],
+    IntentCategory.CODING: [
+        "escribir código función algoritmo script en python javascript depuración sintaxis",
+        "refactorizar código depurar error de sintaxis bug corregir excepción parser",
+        "algoritmo de búsqueda ordenamiento estructura de datos programación",
+    ],
+    IntentCategory.REASONING: [
+        "por qué ocurre esto explica la causa diferencia lógica deducción conceptual",
+        "analiza las consecuencias pros y contras fundamenta tu razonamiento crítico",
+    ],
+    IntentCategory.MEMORY: [
+        "recuerdas lo que te dije antes qué sabes de mí en tu memoria guardada",
+        "acuérdate de mis datos y preferencias personales información guardada",
+    ],
+    IntentCategory.VISION: [
+        "analiza esta imagen foto cámara captura qué ves descripción visual",
+        "reconocimiento visual mirar objetos rostro apariencia en la imagen",
+    ],
+    IntentCategory.WEB: [
+        "busca en internet noticias clima tiempo pronóstico buscar en la web google",
+        "investigar información actualizada en la red noticias y artículos de hoy",
+    ],
+    IntentCategory.TOOL_CREATION: [
+        "crear una nueva tool registrar dynamic tool constructor de herramientas",
+        "construir un adaptador de herramienta personalizada registrar nueva tool",
+    ],
+    IntentCategory.PROJECT_ANALYSIS: [
+        "analizar proyecto zip diagnosticar repositorio inspeccionar archivos y arquitectura",
+        "auditar paquete zip estructura del proyecto árbol de código completo",
+    ],
+    IntentCategory.DATABASE: [
+        "consulta sql base de datos sqlite tabla select insert update esquema",
+        "ejecutar query sql en la base de datos registros relacionales migraciones",
+    ],
+    IntentCategory.SYSTEM: [
+        "estado del sistema centinela monitorear cpu ram gpu hardware temperatura",
+        "recursos del computador poda de red neuronal optimizar memoria del sistema",
+    ],
+}
+
+def _cosine_similarity(v1: List[float], v2: List[float]) -> float:
+    """Calcula la similitud coseno entre dos vectores numéricos."""
+    if not v1 or not v2 or len(v1) != len(v2):
+        return 0.0
+    dot = sum(a * b for a, b in zip(v1, v2))
+    norm1 = math.sqrt(sum(a * a for a in v1))
+    norm2 = math.sqrt(sum(b * b for b in v2))
+    if norm1 == 0.0 or norm2 == 0.0:
+        return 0.0
+    return dot / (norm1 * norm2)
 
 @dataclass
 class QueryRouteResult:
@@ -74,8 +133,10 @@ class QueryOptimizer:
         
         # Patrones de consulta compleja (herramientas, generación de scripts, cálculos, arquitectura)
         self.complex_patterns = [
-            r'\b(?:analizar|procesar|calcular|evaluar|ejecutar)\b',
+            r'\b(?:analizar|analiza|procesar|procesa|calcular|calcula|evaluar|evalúa|ejecutar|ejecuta)\b',
             r'\b(?:crear|generar|programar|escribir)\s+(?:herramienta|código|script|función|algoritmo)\b',
+            r'\b(?:analizar|analiza|revisa|revisar|inspecciona|inspeccionar)\s+(?:este\s+)?(?:archivo|código|codigo|script|python|función|repo)\b',
+            r'\b(?:detectar|detecta|resolver|resuelve|solucionar|soluciona)\s+(?:problemas|errores|bugs|vulnerabilidades)\b',
             r'\b(?:herramienta|tool|función|function)\b',
             r'\b(?:código|codigo|script|programa|refactorizar)\b',
             r'\b(?:busca en internet|buscar en internet|noticias|investigar)\b',
@@ -105,6 +166,9 @@ class QueryOptimizer:
             'complex': {'count': 0, 'total_time': 0.0, 'avg_time': 0.0, 'min_time': 999.0, 'max_time': 0.0},
             'intensive': {'count': 0, 'total_time': 0.0, 'avg_time': 0.0, 'min_time': 999.0, 'max_time': 0.0},
         }
+
+        # Embeddings de prototipos de intención (Tier 1)
+        self._prototype_embeddings: Dict[IntentCategory, List[float]] = {}
 
     def classify_query(self, query: str) -> QueryComplexity:
         """
@@ -187,6 +251,112 @@ class QueryOptimizer:
         else:
             return 0.55
 
+    def _get_prototype_embeddings(self) -> Dict[IntentCategory, List[float]]:
+        """Inicializa y cachea los embeddings de prototipos de intención (Tier 1)."""
+        if self._prototype_embeddings:
+            return self._prototype_embeddings
+        try:
+            from .local_engine import VectorLocalEngine
+            for cat, phrases in INTENT_PROTOTYPES.items():
+                joined = " ".join(phrases)
+                vec = VectorLocalEngine.embed_query(joined)
+                if vec and any(x != 0.0 for x in vec):
+                    self._prototype_embeddings[cat] = vec
+        except Exception as e:
+            logger.debug(f"[QueryOptimizer] Embeddings de prototipos no inicializados: {e}")
+        return self._prototype_embeddings
+
+    def classify_intent_tier1_embeddings(self, query: str) -> Tuple[IntentCategory, float, float]:
+        """
+        Tier 1: Clasificación basada en embeddings y similitud coseno contra prototipos de intents,
+        ponderada con señales léxicas de alta confianza.
+        Retorna (IntentCategory, confianza, margen_sobre_segundo).
+        """
+        q = query.strip()
+        rule_intent, rule_conf = self.classify_intent(q)
+        proto_map = self._get_prototype_embeddings()
+
+        if proto_map:
+            try:
+                from .local_engine import VectorLocalEngine
+                q_vec = VectorLocalEngine.embed_query(q)
+                if q_vec and any(x != 0.0 for x in q_vec):
+                    sims: List[Tuple[IntentCategory, float]] = []
+                    for cat, p_vec in proto_map.items():
+                        sim = _cosine_similarity(q_vec, p_vec)
+                        # Ponderación armónica: refuerza la categoría si coincide con intención léxica fuerte
+                        if cat == rule_intent and rule_conf >= 0.80:
+                            sim += 0.15
+                        sims.append((cat, sim))
+                    sims.sort(key=lambda x: x[1], reverse=True)
+                    best_cat, best_sim = sims[0]
+                    second_sim = sims[1][1] if len(sims) > 1 else 0.0
+                    margin = round(best_sim - second_sim, 3)
+                    conf = round(max(0.0, min(1.0, (best_sim + 1.0) / 2.0)), 2)
+                    return best_cat, conf, margin
+            except Exception as e:
+                logger.debug(f"[Tier 1 Embeddings] Fallo calculando similitud coseno: {e}")
+
+        # Fallback semántico determinista de Tier 1 si el motor vectorial local no está corriendo
+        return rule_intent, rule_conf, 0.20
+
+    def classify_tier2_gemma(self, query: str) -> Optional[Tuple[IntentCategory, float]]:
+        """
+        Tier 2: Desambiguación semántica profunda utilizando Gemma local con salida estricta JSON.
+        Formato requerido: {"route": "coding", "confidence": 0.88}
+        Valida la respuesta y aplica fallback ordenado si falla o no está disponible el LLM.
+        """
+        q = query.strip()
+        prompt = (
+            "Eres el clasificador de intenciones del sistema cognitivo Vector.\n"
+            "Clasifica la consulta del usuario en exactamente una de estas categorías:\n"
+            "- casual: saludos o despedidas\n"
+            "- coding: código fuente, algoritmos, scripts, bugs, errores, 'revisa esto', 'fallando'\n"
+            "- reasoning: por qué, deducción, reflexión lógica, 'hazlo mejor'\n"
+            "- memory: recuerdos, información previa, 'acuérdate de esto'\n"
+            "- vision: fotos, imágenes, cámara, mirar objetos, 'mira esto'\n"
+            "- web: noticias, clima, búsqueda online, 'busca qué ocurrió'\n"
+            "- tool_creation: creación de nuevas herramientas dinámicas\n"
+            "- project_analysis: proyectos zip, repositorio, archivos\n"
+            "- database: sql, sqlite, consultas relacionales\n"
+            "- system: monitoreo hardware, cpu, ram, gpu, red neuronal\n\n"
+            "Responde ÚNICAMENTE un JSON válido con esta estructura:\n"
+            "{\"route\": \"<categoria>\", \"confidence\": <0.0 a 1.0>}\n\n"
+            f"Consulta: \"{q}\""
+        )
+        messages = [{"role": "user", "content": prompt}]
+        try:
+            from .local_engine import VectorLocalEngine
+            resp_text = VectorLocalEngine.chat_completion(messages, temperature=0.1, max_tokens=60)
+            if resp_text:
+                match = re.search(r'\{[^{}]+\}', resp_text)
+                if match:
+                    data = json.loads(match.group(0))
+                    raw_route = str(data.get("route", "")).strip().lower()
+                    raw_conf = float(data.get("confidence", 0.85))
+                    for cat in IntentCategory:
+                        if cat.value.lower() == raw_route:
+                            return cat, round(min(1.0, max(0.0, raw_conf)), 2)
+        except Exception as e:
+            logger.debug(f"[Tier 2 Gemma] Inferencia LLM no disponible: {e}")
+
+        # Desambiguador semántico contextual de Tier 2 (fallback garantizado ante consultas ambiguas)
+        q_lower = q.lower()
+        if any(w in q_lower for w in ("mira esto", "miren esto", "observa esto", "ve esto", "mira la imagen", "foto")):
+            return IntentCategory.VISION, 0.86
+        elif any(w in q_lower for w in ("revisa esto", "chequea esto", "esto está fallando", "falla en", "error", "bug", "código")):
+            return IntentCategory.CODING, 0.88
+        elif any(w in q_lower for w in ("hazlo mejor", "mejora esto", "explica mejor", "por qué", "razona")):
+            return IntentCategory.REASONING, 0.85
+        elif any(w in q_lower for w in ("acuérdate de esto", "acuerdate de esto", "recuerda esto", "guarda esto en memoria")):
+            return IntentCategory.MEMORY, 0.90
+        elif any(w in q_lower for w in ("busca qué ocurrió", "busca que ocurrio", "averigua qué pasó", "noticias de hoy")):
+            return IntentCategory.WEB, 0.87
+        elif any(w in q_lower for w in ("analiza el proyecto", "zip")):
+            return IntentCategory.PROJECT_ANALYSIS, 0.92
+
+        return None
+
     def classify_intent(self, query: str) -> Tuple[IntentCategory, float]:
         """
         Clasifica la intención semántica nuclear de la consulta y retorna (IntentCategory, confianza).
@@ -243,13 +413,14 @@ class QueryOptimizer:
 
     def route_query(self, query: str, user_name: Optional[str] = None) -> QueryRouteResult:
         """
-        Enrutador híbrido de consultas:
-        - Nivel 0: Reglas deterministas y respuesta inmediata si aplica (<1ms).
-        - Nivel 1: Clasificación de intención semántica y complejidad continua (score 0.0 - 1.0).
+        Enrutador híbrido de consultas en 3 Tiers:
+        - TIER 0: Reglas/regex deterministas y respuesta inmediata si aplica (<1ms).
+        - TIER 1: Clasificación semántica por embeddings y similitud coseno contra prototipos.
+        - TIER 2: Gemma local para consultas ambiguas o conflicto entre intents.
         """
         q = query.strip()
 
-        # Nivel 0: Fast path
+        # Nivel 0: Fast path regex determinista
         fast_resp = self.get_simple_response(q, user_name=user_name)
         if fast_resp:
             cfg = self.get_processing_config(QueryComplexity.SIMPLE)
@@ -264,28 +435,39 @@ class QueryOptimizer:
                 metadata={"fast_path": True}
             )
 
-        # Nivel 1 & 2: Clasificación semántica y resolución de ambigüedad
-        intent, confidence = self.classify_intent(q)
-        score = self.calculate_complexity_score(q)
+        q_lower = q.lower()
+        ambiguous_patterns = [
+            r'\bmira\s+esto\b',
+            r'\brevisa\s+esto\b',
+            r'\bhazlo\s+mejor\b',
+            r'\bacu[eé]rdate\s+de\s+esto\b',
+            r'\besto\s+est[aá]\s+fallando\b',
+            r'\bbusca\s+qu[eé]\s+ocurri[oó]\b',
+        ]
+        is_ambiguous = any(re.search(pat, q_lower) for pat in ambiguous_patterns)
 
-        # Nivel 2: Para consultas ambiguas (baja confianza <0.60) o de alta complejidad estructural
+        # Nivel 1: Clasificación de intención semántica con embeddings
+        intent_t1, conf_t1, margin_t1 = self.classify_intent_tier1_embeddings(q)
+
         tier = 1
-        if confidence < 0.60 or (score > 0.70 and intent == IntentCategory.REASONING):
-            tier = 2
-            # Desambiguación semántica profunda
-            q_lower = q.lower()
-            if any(w in q_lower for w in ("función", "clase", "método", "variable", "error", "bug", "optimizar", "script")):
-                intent = IntentCategory.CODING
-                confidence = 0.80
-            elif any(w in q_lower for w in ("archivo", "carpeta", "directorio", "zip", "proyecto", "repositorio")):
-                intent = IntentCategory.PROJECT_ANALYSIS
-                confidence = 0.85
-            elif any(w in q_lower for w in ("recuerda", "memoria", "antes", "ayer", "dijiste")):
-                intent = IntentCategory.MEMORY
-                confidence = 0.80
+        intent = intent_t1
+        confidence = conf_t1
+
+        # Nivel 2: Activar Gemma local si hay baja confianza (<0.60), conflicto de intents (margin < 0.05) o ambigüedad explícita
+        if is_ambiguous or conf_t1 < 0.60 or (margin_t1 < 0.05 and conf_t1 < 0.75):
+            t2_res = self.classify_tier2_gemma(q)
+            if t2_res:
+                intent, confidence = t2_res
+                tier = 2
             else:
-                intent = IntentCategory.REASONING
-                confidence = 0.70
+                # Si falla Tier 2, volver ordenadamente a Tier 1
+                tier = 1
+                intent = intent_t1
+                confidence = conf_t1
+
+        score = self.calculate_complexity_score(q)
+        if tier == 2 and score < 0.35:
+            score = 0.45
 
         # Mapeo score -> QueryComplexity
         if score <= 0.20:

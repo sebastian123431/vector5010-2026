@@ -59,13 +59,27 @@ class PlanExecutor:
             else:
                 # Ejecución real (o delegación al tool_runner si existe)
                 try:
-                    if step.required_tool and self.tool_runner:
+                    if step.required_tool:
+                        if self.tool_runner is None:
+                            step.status = StepStatus.FAILED
+                            step.error = "required tool runner unavailable"
+                            step.result = "required tool runner unavailable"
+                            step.latency_ms = (time.perf_counter() - t0) * 1000.0
+                            execution_trace.append({
+                                "step": step.step_number,
+                                "status": "failed",
+                                "error": step.error,
+                                "latency_ms": round(step.latency_ms, 2)
+                            })
+                            continue
+
                         res = self.tool_runner(step.required_tool, {"description": step.description})
                         step.result = res
                         step.output_data = res
                     else:
-                        step.result = f"Paso completado: {step.title}"
+                        step.result = f"Paso cognitivo completado: {step.title}"
                         step.output_data = step.result
+
                     step.status = StepStatus.COMPLETED
                     step.latency_ms = (time.perf_counter() - t0) * 1000.0
                     completed_steps.add(step.step_number)

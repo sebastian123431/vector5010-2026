@@ -128,3 +128,15 @@ class TestMemoryManagerP2(TestCase):
         results = faiss_backend.search(query_v, top_k=1)
         self.assertGreaterEqual(len(results), 1)
         self.assertEqual(results[0][0].content, "Recuerdo indexado en FAISS")
+
+        # Verificación estricta de FAISS real cuando está instalado en el entorno
+        try:
+            import faiss
+            faiss_installed = True
+        except ImportError:
+            faiss_installed = False
+
+        if faiss_installed:
+            self.assertTrue(faiss_backend.use_faiss)
+            self.assertIsNotNone(faiss_backend.index)
+            self.assertGreater(faiss_backend.index.ntotal, 0)

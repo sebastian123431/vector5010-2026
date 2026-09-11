@@ -31,6 +31,25 @@ class MemoryEntry(models.Model):
     # Embedding denso (768 floats en float32 = 3072 bytes)
     vector      = models.BinaryField(null=True, blank=True)
 
+    # Scoping y aislamiento de identidad relacional
+    identity_id = models.CharField(max_length=64, db_index=True, default='', blank=True)
+    session_id  = models.CharField(max_length=64, db_index=True, default='', blank=True)
+    scope       = models.CharField(
+        max_length=20,
+        db_index=True,
+        choices=[
+            ('GLOBAL',   'Global'),
+            ('PERSONAL', 'Personal'),
+            ('SESSION',  'Session'),
+            ('PROJECT',  'Project'),
+        ],
+        default='GLOBAL'
+    )
+    project_id  = models.CharField(max_length=64, db_index=True, default='', blank=True)
+    source      = models.CharField(max_length=50, default='system', blank=True)
+    confidence  = models.FloatField(default=1.0)
+    importance  = models.FloatField(default=0.5)
+
     class Meta:
         ordering = ['-created_at']
 
@@ -64,12 +83,35 @@ class MemoryEntry(models.Model):
         super().save(*args, **kwargs)
 
     @classmethod
-    def recall(cls, query: str, top_k: int = 5, limit: Optional[int] = None) -> List['MemoryEntry']:
+    def recall(
+        cls,
+        query: str,
+        top_k: int = 5,
+        limit: Optional[int] = None,
+        identity_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        scope: Optional[str] = None
+    ) -> List['MemoryEntry']:
         """
         Búsqueda semántica ultrarrápida (<1ms) utilizando multiplicación matricial NumPy
-        sobre los vectores Nomic cacheados en SQLite, con fallback de generación perezosa.
+        sobre los vectores Nomic cacheados en SQLite, con pre-filtrado estricto por scope relacional.
         """
         qs = cls.objects.all()
+        if identity_id or session_id or scope:
+            from django.db.models import Q
+            cond = Q(scope="GLOBAL")
+            if identity_id:
+                cond |= Q(scope="PERSONAL", identity_id=str(identity_id).lower().strip())
+            if session_id:
+                cond |= Q(scope="SESSION", session_id=str(session_id).strip())
+            if scope:
+                cond |= Q(scope=scope)
+            qs = qs.filter(cond)
+        elif not identity_id:
+            # Si no se provee identidad, solo recuerdos globales por defecto
+            from django.db.models import Q
+            qs = qs.filter(Q(scope="GLOBAL") | Q(scope=""))
+
         entries = list(qs[:limit]) if (limit is not None and limit > 0) else list(qs)
         if not entries:
             return []

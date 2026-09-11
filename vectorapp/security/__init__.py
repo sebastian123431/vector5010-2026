@@ -27,9 +27,11 @@ from .sandbox_policy import (
 from .action_policy import (
     require_action_confirmation,
     dangerous_endpoint,
-    creator_only,
+    high_impact_action,
     state_change_endpoint,
     read_only_endpoint,
+    pending_action_manager,
+    PendingActionManager,
 )
 from .user_profile import (
     UserProfile,
@@ -56,9 +58,11 @@ __all__ = [
     "TOOL_MAX_OUTPUT_BYTES",
     "require_action_confirmation",
     "dangerous_endpoint",
-    "creator_only",
+    "high_impact_action",
     "state_change_endpoint",
     "read_only_endpoint",
+    "pending_action_manager",
+    "PendingActionManager",
     "UserProfile",
     "resolve_user_profile",
 ]

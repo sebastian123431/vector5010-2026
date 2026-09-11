@@ -10,7 +10,7 @@ import time
 import subprocess
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Tuple
 from pathlib import Path
 
 from .path_policy import PathPolicy, DEFAULT_TOOL_WORKSPACE
@@ -42,6 +42,9 @@ class SandboxPolicy:
         self.timeout = timeout
         self.max_output_bytes = max_output_bytes
         self.path_policy = PathPolicy(workspace_dir or DEFAULT_TOOL_WORKSPACE)
+
+# Alias para compatibilidad
+SandboxSecurityPolicy = SandboxPolicy
 
 class ToolRunner:
     """
@@ -133,71 +136,13 @@ class ToolRunner:
         workspace_cwd = str(self.policy.path_policy.workspace_dir)
 
         try:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+            timed_out, killed_due_to_overflow, stdout_bytes, stderr_bytes, returncode, elapsed = self._run_bounded_process(
+                cmd=cmd,
                 cwd=workspace_cwd,
-                env=safe_env
+                env=safe_env,
+                timeout=time_limit,
+                max_output_bytes=self.policy.max_output_bytes
             )
-
-            stdout_chunks = []
-            stderr_chunks = []
-            total_stdout_len = 0
-            killed_due_to_overflow = False
-            timed_out = False
-
-            import threading
-
-            def reader_stdout():
-                nonlocal total_stdout_len, killed_due_to_overflow
-                try:
-                    while True:
-                        chunk = proc.stdout.read(4096)
-                        if not chunk:
-                            break
-                        total_stdout_len += len(chunk)
-                        if total_stdout_len > self.policy.max_output_bytes:
-                            killed_due_to_overflow = True
-                            proc.kill()
-                            break
-                        stdout_chunks.append(chunk)
-                except Exception:
-                    pass
-
-            def reader_stderr():
-                try:
-                    while True:
-                        chunk = proc.stderr.read(4096)
-                        if not chunk:
-                            break
-                        stderr_chunks.append(chunk)
-                except Exception:
-                    pass
-
-            t_out = threading.Thread(target=reader_stdout, daemon=True)
-            t_err = threading.Thread(target=reader_stderr, daemon=True)
-            t_out.start()
-            t_err.start()
-
-            deadline = time.time() + time_limit
-            while proc.poll() is None:
-                if killed_due_to_overflow:
-                    break
-                if time.time() > deadline:
-                    timed_out = True
-                    proc.kill()
-                    break
-                time.sleep(0.02)
-
-            try:
-                proc.wait(timeout=2)
-            except Exception:
-                proc.kill()
-            t_out.join(timeout=1)
-            t_err.join(timeout=1)
-
-            elapsed = time.time() - start_time
 
             if killed_due_to_overflow:
                 return ToolExecutionResult(
@@ -216,8 +161,6 @@ class ToolRunner:
                     execution_time_s=elapsed
                 )
 
-            stdout_bytes = b"".join(stdout_chunks)
-            stderr_bytes = b"".join(stderr_chunks)
             stdout_str = stdout_bytes.decode('utf-8', errors='replace').strip()
             stderr_str = stderr_bytes.decode('utf-8', errors='replace').strip()
 
@@ -245,7 +188,7 @@ class ToolRunner:
                     execution_time_s=elapsed
                 )
             else:
-                err_detail = stderr_str if stderr_str else (stdout_str if stdout_str else f"Código de salida: {proc.returncode}")
+                err_detail = stderr_str if stderr_str else (stdout_str if stdout_str else f"Código de salida: {returncode}")
                 return ToolExecutionResult(
                     success=False,
                     result=None,
@@ -253,15 +196,6 @@ class ToolRunner:
                     execution_time_s=elapsed
                 )
 
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            elapsed = time.time() - start_time
-            return ToolExecutionResult(
-                success=False,
-                result=None,
-                error=f"[Timeout] La herramienta '{tool_name}' excedió el límite de seguridad ({time_limit}s).",
-                execution_time_s=elapsed
-            )
         except Exception as e:
             elapsed = time.time() - start_time
             return ToolExecutionResult(
@@ -270,6 +204,98 @@ class ToolRunner:
                 error=f"Error inesperado al ejecutar herramienta: {str(e)}",
                 execution_time_s=elapsed
             )
+
+    def _run_bounded_process(
+        self,
+        cmd: List[str],
+        cwd: str,
+        env: Dict[str, str],
+        timeout: float,
+        max_output_bytes: Optional[int] = None
+    ) -> Tuple[bool, bool, bytes, bytes, int, float]:
+        """
+        Helper unificado para ejecutar subprocesos de forma segura:
+        - Control incremental de chunks de stdout/stderr.
+        - Límite de cuota de output en bytes con process kill preventivo.
+        - Timeout estricto con process kill forzoso.
+        Retorna (timed_out, killed_due_to_overflow, stdout_bytes, stderr_bytes, returncode, elapsed).
+        """
+        import threading
+        start_time = time.time()
+        max_bytes = max_output_bytes or (5 * 1024 * 1024)
+
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            env=env
+        )
+
+        stdout_chunks: List[bytes] = []
+        stderr_chunks: List[bytes] = []
+        total_stdout_len = 0
+        killed_due_to_overflow = False
+        timed_out = False
+
+        def reader_stdout():
+            nonlocal total_stdout_len, killed_due_to_overflow
+            try:
+                while True:
+                    chunk = proc.stdout.read(4096)
+                    if not chunk:
+                        break
+                    total_stdout_len += len(chunk)
+                    if total_stdout_len > max_bytes:
+                        killed_due_to_overflow = True
+                        proc.kill()
+                        break
+                    stdout_chunks.append(chunk)
+            except Exception:
+                pass
+
+        def reader_stderr():
+            try:
+                while True:
+                    chunk = proc.stderr.read(4096)
+                    if not chunk:
+                        break
+                    stderr_chunks.append(chunk)
+            except Exception:
+                pass
+
+        t_out = threading.Thread(target=reader_stdout, daemon=True)
+        t_err = threading.Thread(target=reader_stderr, daemon=True)
+        t_out.start()
+        t_err.start()
+
+        deadline = time.time() + timeout
+        while proc.poll() is None:
+            if killed_due_to_overflow:
+                break
+            if time.time() > deadline:
+                timed_out = True
+                proc.kill()
+                break
+            time.sleep(0.02)
+
+        try:
+            proc.wait(timeout=2)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+        t_out.join(timeout=1)
+        t_err.join(timeout=1)
+
+        elapsed = time.time() - start_time
+        stdout_bytes = b"".join(stdout_chunks)
+        stderr_bytes = b"".join(stderr_chunks)
+        returncode = proc.returncode if proc.returncode is not None else -1
+
+        return timed_out, killed_due_to_overflow, stdout_bytes, stderr_bytes, returncode, elapsed
 
     def run_test_file(self, test_file_path: str, timeout: int = 10) -> ToolExecutionResult:
         """
@@ -291,20 +317,24 @@ class ToolRunner:
         cmd = [sys.executable, str(test_path)]
 
         try:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=False,
+            timed_out, killed_due_to_overflow, stdout_bytes, stderr_bytes, returncode, elapsed = self._run_bounded_process(
+                cmd=cmd,
                 cwd=workspace_cwd,
-                env=safe_env
+                env=safe_env,
+                timeout=timeout,
+                max_output_bytes=self.policy.max_output_bytes
             )
-            try:
-                stdout_bytes, stderr_bytes = proc.communicate(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-                elapsed = time.time() - start_time
+
+            if killed_due_to_overflow:
+                return ToolExecutionResult(
+                    success=False,
+                    result=None,
+                    error=f"[ResourceLimit] Salida de la prueba '{test_path.name}' superó el máximo de {self.policy.max_output_bytes} bytes.",
+                    execution_time_s=elapsed,
+                    output_truncated=True
+                )
+
+            if timed_out:
                 return ToolExecutionResult(
                     success=False,
                     result=None,
@@ -312,11 +342,10 @@ class ToolRunner:
                     execution_time_s=elapsed
                 )
 
-            elapsed = time.time() - start_time
             stdout_str = stdout_bytes.decode('utf-8', errors='replace').strip()
             stderr_str = stderr_bytes.decode('utf-8', errors='replace').strip()
 
-            if proc.returncode == 0:
+            if returncode == 0:
                 return ToolExecutionResult(
                     success=True,
                     result=stdout_str or "Test passed successfully",
@@ -328,7 +357,7 @@ class ToolRunner:
                 return ToolExecutionResult(
                     success=False,
                     result=None,
-                    error=f"Fallo en pruebas unitarias (código {proc.returncode}): {err_detail}",
+                    error=f"Fallo en pruebas unitarias (código {returncode}): {err_detail}",
                     execution_time_s=elapsed
                 )
         except Exception as e:

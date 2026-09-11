@@ -36,9 +36,22 @@ class QueryTelemetryRecord:
     route: str = "tier_0"
     complexity: str = "simple"
     sandbox_blocks: int = 0
+    # Métricas P2 de observabilidad e integración
+    identity_id: Optional[str] = None
+    identity_changed: bool = False
+    query_tier: str = "tier_0"
+    memory_backend: str = "faiss"
+    memory_hits: int = 0
+    reasoning_mode: str = "direct"
+    tool_steps: int = 0
+    failed_steps: int = 0
+    verification_status: str = "n/a"
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        d = asdict(self)
+        if not d.get("identity_id"):
+            d["identity_id"] = self.interlocutor
+        return d
 
 
 class TelemetryManager:
@@ -74,7 +87,16 @@ class TelemetryManager:
         identity_confidence: float = 1.0,
         route: str = "tier_0",
         complexity: Optional[str] = None,
-        sandbox_blocks: int = 0
+        sandbox_blocks: int = 0,
+        identity_id: Optional[str] = None,
+        identity_changed: bool = False,
+        query_tier: Optional[str] = None,
+        memory_backend: str = "faiss",
+        memory_hits: int = 0,
+        reasoning_mode: str = "direct",
+        tool_steps: int = 0,
+        failed_steps: int = 0,
+        verification_status: str = "n/a"
     ) -> QueryTelemetryRecord:
         """
         Registra una consulta en el buffer de telemetría.
@@ -89,6 +111,11 @@ class TelemetryManager:
                 complexity = "complex"
             else:
                 complexity = "intensive"
+
+        if query_tier is None:
+            query_tier = route
+
+        resolved_identity_id = identity_id if identity_id is not None else interlocutor
 
         record = QueryTelemetryRecord(
             query_id=query_id,
@@ -106,7 +133,16 @@ class TelemetryManager:
             identity_confidence=round(float(identity_confidence), 4),
             route=route,
             complexity=complexity,
-            sandbox_blocks=sandbox_blocks
+            sandbox_blocks=sandbox_blocks,
+            identity_id=resolved_identity_id,
+            identity_changed=identity_changed,
+            query_tier=query_tier,
+            memory_backend=memory_backend,
+            memory_hits=memory_hits,
+            reasoning_mode=reasoning_mode,
+            tool_steps=tool_steps,
+            failed_steps=failed_steps,
+            verification_status=verification_status
         )
 
         with self._lock:

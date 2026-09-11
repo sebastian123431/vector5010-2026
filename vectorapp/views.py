@@ -63,7 +63,7 @@ from .sentinel import vector_sentinel
 from .context_compactor import ContextCompactor
 from .security import (
     resolve_user_profile,
-    creator_only,
+    high_impact_action,
     dangerous_endpoint,
     state_change_endpoint,
     read_only_endpoint,
@@ -237,11 +237,14 @@ def chat_view(request):
     if not mensaje:
         return JsonResponse({"error": "No se proporcionó mensaje"}, status=400)
     
-    # Recuperar memorias relevantes de MemoryEntry y embeddings semánticos
-    memories = MemoryEntry.recall(mensaje, top_k=5)
+    # Recuperar memorias relevantes de MemoryManager y embeddings semánticos
+    from .memory import memory_manager
+    memories = memory_manager.recall(mensaje, top_k=5)
     memory_context = ''
     if memories:
-        memory_context = 'Memorias relevantes:\n' + '\n'.join(f"- {m.content}" for m in memories)
+        memory_context = 'Memorias relevantes:\n' + '\n'.join(
+            f"- {m['content'] if isinstance(m, dict) else m.content}" for m in memories
+        )
     # Búsqueda semántica adicional con FAISS
     try:
         docs = retriever.invoke(mensaje) if hasattr(retriever, 'invoke') else getattr(retriever, 'get_relevant_documents', lambda q: [])(mensaje)
@@ -674,10 +677,12 @@ def recuperar_memoria_asociativa(mensaje: str, interlocutor: str = "", session_i
         'busca', 'buscar', 'internet', 'noticias', 'noticia', 'quiero', 'puedes', 'podrias',
         'favor', 'acerca', 'sobre', 'cuando', 'hablamos', 'recuerdas', 'acuerdas', 'dime',
         'muestra', 'tienes', 'tengo', 'hacer', 'hola', 'vector', 'buenas', 'buenos', 'para',
-        'esta', 'este', 'estos', 'estas', 'como', 'cual', 'cuales'
+        'esta', 'este', 'estos', 'estas', 'como'
     }
     es_retrospectivo = any(p in mensaje_lower for p in ["recuerdas", "acuerdas", "hablamos", "dijiste", "charlamos", "mencionaste", "pasado", "anterior", "ayer", "la otra vez", "hace un rato", "que te dije", "qué te dije"])
     es_consulta_memoria_abierta = any(p in mensaje_lower for p in ["que sabes sobre", "qué sabes sobre", "que has aprendido", "qué has aprendido", "tienes en memoria", "en tu memoria", "busca en tu memoria", "que recuerdas", "qué recuerdas"])
+    es_consulta_preferencia = any(p in mensaje_lower for p in ["cuál es mi", "cual es mi", "qué me gusta", "que me gusta", "mi favorito", "mi favorita", "mi editor", "mi lenguaje", "mis preferencias", "recuerdas mi", "sabes mi", "qué editor", "que editor"])
+    requiere_recuerdo = es_retrospectivo or es_consulta_memoria_abierta or es_consulta_preferencia
     
     # 1. Búsqueda en la Red Neuronal Semántica (conceptos globales con umbral estricto)
     try:
@@ -686,7 +691,7 @@ def recuperar_memoria_asociativa(mensaje: str, interlocutor: str = "", session_i
             if sim > 0.72:
                 neuron = semantic_network.neurons.get(nid)
                 if neuron and neuron.content:
-                    if neuron.concept_type == 'interaction' and not (es_retrospectivo or es_consulta_memoria_abierta):
+                    if neuron.concept_type == 'interaction' and not requiere_recuerdo:
                         continue
                     c = limpiar_texto_memoria(neuron.content.replace("INTERACCIÓN: ", "")).strip()
                     if c and c not in recuerdos:
@@ -695,7 +700,7 @@ def recuperar_memoria_asociativa(mensaje: str, interlocutor: str = "", session_i
         logger.debug(f"Error consultando red neuronal: {e}")
 
     # 2. Búsqueda episódica en interacciones pasadas (Interaction) aislada por interlocutor y sesión
-    if es_retrospectivo or es_consulta_memoria_abierta:
+    if requiere_recuerdo:
         try:
             palabras = [w for w in mensaje_lower.replace('?', '').replace('¿', '').split() if len(w) > 4 and w not in stop_words]
             if palabras:
@@ -726,21 +731,27 @@ def recuperar_memoria_asociativa(mensaje: str, interlocutor: str = "", session_i
         except Exception as e:
             logger.debug(f"Error consultando interacciones pasadas: {e}")
 
-    # 3. Búsqueda en hechos aprendidos (MemoryEntry)
-    if es_retrospectivo or es_consulta_memoria_abierta:
+    # 3. Búsqueda en hechos aprendidos (MemoryManager)
+    if requiere_recuerdo:
         try:
-            mems = MemoryEntry.recall(mensaje, top_k=2)
+            from .memory import memory_manager
+            mems = memory_manager.recall(
+                mensaje,
+                top_k=2,
+                user_name=interlocutor,
+                session_id=session_id
+            )
             for m in mems:
-                m_content = str(m.content or '')
+                m_content = str((m["content"] if isinstance(m, dict) else m.content) or '')
                 if m_content and not m_content.startswith("PATRONES_") and not m_content.startswith("TEMAS:"):
                     clean_m = sanitizar_respuesta_vector(m_content)[:90]
                     if clean_m and clean_m not in recuerdos:
                         recuerdos.append(f"Dato aprendido: '{clean_m}'")
         except Exception as e:
-            logger.debug(f"Error en MemoryEntry: {e}")
+            logger.debug(f"Error en MemoryManager: {e}")
 
     # 4. Fallback contextual aislado
-    if not recuerdos and (es_retrospectivo or es_consulta_memoria_abierta):
+    if not recuerdos and requiere_recuerdo:
         try:
             qs_it = Interaction.objects.exclude(question=mensaje)
             if interlocutor and interlocutor.lower() not in ("invitado", "interlocutor", "interlocutor_anonimo", ""):
@@ -876,11 +887,24 @@ def preparar_contexto_vector(
     if usuario and hasattr(usuario, "first_name") and usuario.first_name:
         context_hints["usuario_first_name"] = usuario.first_name
 
+    ext_signals = []
+    if imagen_input or audio_input:
+        try:
+            from .identity import MultimodalIdentityProcessor
+            ext_signals = MultimodalIdentityProcessor().process_signals(
+                image_input=imagen_input or None,
+                audio_input=audio_input or None,
+                session_id=session_id or ""
+            )
+        except Exception as e_sig:
+            logger.debug(f"[MultimodalIdentity] Error extrayendo señales: {e_sig}")
+
     id_state = identity_manager.process_message(
         message=mensaje,
         session_id=session_id or "",
         session_dict=session if isinstance(session, dict) or hasattr(session, "get") else None,
-        context_hints=context_hints
+        context_hints=context_hints,
+        external_signals=ext_signals
     )
     nombre_interlocutor = id_state.display_name if id_state.status != IdentityStatus.UNKNOWN else ""
     nombre_recien_presentado = id_state.display_name if (id_state.source == IdentitySource.EXPLICIT_TEXT and id_state.status in (IdentityStatus.DECLARED, IdentityStatus.RECOGNIZED)) else ""
@@ -1217,12 +1241,16 @@ def preparar_contexto_vector(
         "que sabes sobre", "qué sabes sobre", "que has aprendido", "qué has aprendido",
         "tienes en memoria", "en tu memoria", "busca en tu memoria", "que recuerdas", "qué recuerdas"
     ])
+    es_consulta_preferencia = any(p in mensaje_lower for p in [
+        "cuál es mi", "cual es mi", "qué me gusta", "que me gusta", "mi favorito", "mi favorita",
+        "mi editor", "mi lenguaje", "mis preferencias", "recuerdas mi", "sabes mi", "qué editor", "que editor"
+    ])
 
     # Recuerdos de memoria asociativa profunda:
-    # SOLO se consulta la memoria a largo plazo cuando el usuario pregunta por el pasado o por recuerdos
+    # SOLO se consulta la memoria a largo plazo cuando el usuario pregunta por el pasado, recuerdos o preferencias
     context_memoria = ""
     contexto_memoria_directiva = ""
-    if (es_retrospectivo or es_consulta_memoria) and not skip_flags.get("skip_memory_analysis", False):
+    if (es_retrospectivo or es_consulta_memoria or es_consulta_preferencia) and not skip_flags.get("skip_memory_analysis", False):
         context_memoria = recuperar_memoria_asociativa(mensaje, interlocutor=nombre_interlocutor, session_id=session_id or "")
         if es_consulta_memoria:
             mem_text = context_memoria.strip() if context_memoria else "nuestras conversaciones recientes, análisis del sistema y optimización del código"
@@ -1897,11 +1925,24 @@ def interactuar(request):
     if usuario and hasattr(usuario, "first_name") and usuario.first_name:
         context_hints["usuario_first_name"] = usuario.first_name
 
+    ext_signals = []
+    if imagen_input or audio_input:
+        try:
+            from .identity import MultimodalIdentityProcessor
+            ext_signals = MultimodalIdentityProcessor().process_signals(
+                image_input=imagen_input or None,
+                audio_input=audio_input or None,
+                session_id=session_id or ""
+            )
+        except Exception as e_sig:
+            logger.debug(f"[MultimodalIdentity] Error extrayendo señales en interactuar: {e_sig}")
+
     id_state = identity_manager.process_message(
         message=mensaje,
         session_id=session_id or "",
         session_dict=session if isinstance(session, dict) or hasattr(session, "get") else None,
-        context_hints=context_hints
+        context_hints=context_hints,
+        external_signals=ext_signals
     )
     nombre_interlocutor = id_state.display_name if id_state.status != IdentityStatus.UNKNOWN else ""
 
@@ -2000,6 +2041,55 @@ def interactuar(request):
 
     elapsed = time.perf_counter() - t_start
     query_optimizer.record_performance(complexity, elapsed)
+
+    # Registro de observabilidad P2 por consulta
+    try:
+        from .telemetry import telemetry_manager
+        from .memory import memory_manager
+
+        tool_steps_cnt = 0
+        failed_steps_cnt = 0
+        verif_status = "n/a"
+        reas_mode = "direct"
+
+        if reasoning_trace:
+            reas_mode = str(reasoning_trace.get("mode", "execute"))
+            plan_obj = reasoning_trace.get("plan", {})
+            steps_list = plan_obj.get("steps", []) if isinstance(plan_obj, dict) else []
+            for st in steps_list:
+                if isinstance(st, dict):
+                    if st.get("required_tool"):
+                        tool_steps_cnt += 1
+                    if st.get("status") in ("failed", "FAILED"):
+                        failed_steps_cnt += 1
+            if reasoning_trace.get("verifier"):
+                verif_status = "verified" if reasoning_trace["verifier"].get("passed") else "failed"
+
+        mem_backend = memory_manager.get_active_backend() if hasattr(memory_manager, "get_active_backend") else "faiss"
+        mem_hits_cnt = 1 if "Recuerdos asociados en memoria" in system_prompt else 0
+        q_tier = "tier_2" if complexity in (QueryComplexity.COMPLEX, QueryComplexity.INTENSIVE) else "tier_0"
+
+        telemetry_manager.record_query(
+            query_id=f"qry_{int(time.time()*1000)}",
+            interlocutor=nombre_actual or nombre_interlocutor or "general",
+            intent=getattr(complexity, "value", str(complexity)),
+            complexity_score=query_optimizer.calculate_complexity_score(getattr(complexity, "value", str(complexity))),
+            latency_ms=elapsed * 1000.0,
+            identity_id=id_state.identity_id or (nombre_actual or nombre_interlocutor or "general"),
+            identity_source=getattr(id_state.source, "value", str(id_state.source)),
+            identity_changed=id_state.was_changed,
+            query_tier=q_tier,
+            memory_backend=mem_backend,
+            memory_hits=mem_hits_cnt,
+            reasoning_mode=reas_mode,
+            tool_steps=tool_steps_cnt,
+            failed_steps=failed_steps_cnt,
+            verification_status=verif_status,
+            status="success"
+        )
+    except Exception as e_tel:
+        logger.debug(f"[Observabilidad] Error registrando métricas en interactuar: {e_tel}")
+
     if not enlaces_en_msg and not imagen_input and not audio_input and not video_input and "DIRECTIVA PRIORITARIA DE REGISTRO E IDENTIFICACIÓN VISUAL" not in system_prompt and "DIRECTIVA DE MEMORIA VISUAL" not in system_prompt:
         query_optimizer.cache_response(mensaje_limpio, respuesta, complexity, user_name=nombre_actual)
 
@@ -2078,11 +2168,24 @@ def interactuar_stream(request):
     if usuario and hasattr(usuario, "first_name") and usuario.first_name:
         context_hints["usuario_first_name"] = usuario.first_name
 
+    ext_signals = []
+    if imagen_input or audio_input:
+        try:
+            from .identity import MultimodalIdentityProcessor
+            ext_signals = MultimodalIdentityProcessor().process_signals(
+                image_input=imagen_input or None,
+                audio_input=audio_input or None,
+                session_id=session_id or ""
+            )
+        except Exception as e_sig:
+            logger.debug(f"[MultimodalIdentity] Error extrayendo señales en interactuar_stream: {e_sig}")
+
     id_state = identity_manager.process_message(
         message=mensaje,
         session_id=session_id or "",
         session_dict=session if isinstance(session, dict) or hasattr(session, "get") else None,
-        context_hints=context_hints
+        context_hints=context_hints,
+        external_signals=ext_signals
     )
     nombre_interlocutor = id_state.display_name if id_state.status != IdentityStatus.UNKNOWN else ""
 

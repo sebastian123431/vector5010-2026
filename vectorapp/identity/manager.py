@@ -56,39 +56,54 @@ class IdentityManager:
 
     def process_message(
         self,
-        text: str,
+        message: Optional[str] = None,
         session_id: str = "",
         session_dict: Optional[Dict[str, Any]] = None,
-        external_signals: Optional[List[IdentitySignal]] = None
-    ) -> Tuple[IdentityState, bool]:
+        context_hints: Optional[Dict[str, Any]] = None,
+        external_signals: Optional[List[IdentitySignal]] = None,
+        text: Optional[str] = None
+    ) -> IdentityState:
         """
         Procesa un mensaje entrante extrayendo evidencias y resolviendo la identidad.
         Actualiza el interlocutor actual y sincroniza con session_dict si hubo cambio o afirmación.
 
-        Retorna:
-            (estado_identidad_actual, hubo_cambio_de_interlocutor)
+        Retorna SIEMPRE:
+            IdentityState (con .was_changed para detectar conmutación de interlocutor)
         """
+        query_text = message if message is not None else (text or "")
         current_state = self.get_interlocutor(session_id=session_id, session_dict=session_dict)
         signals: List[IdentitySignal] = []
 
         # 1. Extraer señal explícita del texto ("Soy Juan")
-        text_sig = IdentityResolver.extract_explicit_text_identity(text)
+        text_sig = IdentityResolver.extract_explicit_text_identity(query_text)
         if text_sig:
             text_sig.session_id = session_id
             signals.append(text_sig)
 
-        # 2. Agregar señales externas provistas (ej: visión, voz, perfil)
+        # 2. Señales contextuales desde context_hints si se proporcionan y no hay texto explícito
+        if context_hints and not text_sig:
+            hint_name = context_hints.get("nombre_cliente") or context_hints.get("usuario_first_name")
+            if hint_name and str(hint_name).strip():
+                signals.append(IdentitySignal(
+                    candidate=str(hint_name).strip().capitalize(),
+                    confidence=0.70,
+                    source=IdentitySource.CONTEXTUAL_INFERENCE,
+                    session_id=session_id,
+                    metadata={"source_hint": "context_hints"}
+                ))
+
+        # 3. Agregar señales externas provistas (ej: visión, voz, perfil)
         if external_signals:
             signals.extend(external_signals)
 
-        # 3. Resolver estado mediante IdentityResolver
+        # 4. Resolver estado mediante IdentityResolver
         new_state, changed = IdentityResolver.resolve_identity(
             current_state=current_state,
             signals=signals,
             session_id=session_id
         )
 
-        # 4. Persistir en memoria interna y sincronizar con session de Django
+        # 5. Persistir en memoria interna y sincronizar con session de Django
         with self._lock:
             if session_id:
                 self._sessions[session_id] = new_state

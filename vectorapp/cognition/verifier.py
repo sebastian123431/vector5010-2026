@@ -86,5 +86,6 @@ class CognitiveVerifier:
 
         return {
             "safe": len(violations) == 0,
+            "passed": len(violations) == 0,
             "violations": violations
         }

@@ -13,6 +13,7 @@ import json
 import time
 import shutil
 import logging
+import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Set
 from collections import defaultdict
@@ -25,6 +26,33 @@ from .security.exceptions import ZipBombViolation, PathTraversalViolation
 from .javascript_engine import javascript_engine
 
 logger = logging.getLogger(__name__)
+
+def sanitize_project_name(project_name: Optional[str]) -> str:
+    """
+    Sanitiza y valida estrictamente el nombre del proyecto para evitar directory traversal.
+    Permite únicamente nombres alfanuméricos con guiones y guiones bajos (^[A-Za-z0-9_-]+$).
+    Bloquea explícitamente '../', '..', '/', '\\', 'C:', o rutas absolutas.
+    Lanza PathTraversalViolation ante cualquier intento de escape o nombre inseguro.
+    """
+    if not project_name:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"proyecto_{timestamp}"
+
+    name = str(project_name).strip()
+    if not name:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"proyecto_{timestamp}"
+
+    # Bloquear traversal evidente y separadores de carpetas/unidades
+    if any(traversal in name for traversal in ("..", "/", "\\", ":")):
+        raise PathTraversalViolation(f"Nombre de proyecto inválido o intento de path traversal: '{project_name}'")
+
+    if not re.match(r'^[A-Za-z0-9_-]+$', name):
+        raise PathTraversalViolation(
+            f"El nombre del proyecto solo puede contener letras, números, guiones y guiones bajos: '{project_name}'"
+        )
+
+    return name
 
 # Límites de seguridad configurables para prevención de ZIP bombs
 MAX_ZIP_FILES = 5000
@@ -167,13 +195,17 @@ class ProjectCodeAnalyzer:
         Aplica cuotas de archivos, tamaño acumulado, profundidad y ratio de compresión.
         Realiza lectura en chunks y rollback automático en caso de violación.
         """
-        if not project_name:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            project_name = f"proyecto_{timestamp}"
+        # 0. Sanitizar estrictamente el nombre del proyecto contra path traversal
+        project_name = sanitize_project_name(project_name)
 
         target_dir = os.path.join(self.workspace_dir, project_name)
-        os.makedirs(target_dir, exist_ok=True)
+        resolved_workspace = Path(self.workspace_dir).resolve()
         resolved_target_dir = Path(target_dir).resolve()
+
+        if not resolved_target_dir.is_relative_to(resolved_workspace):
+            raise PathTraversalViolation(f"El directorio destino '{target_dir}' escapa del workspace.")
+
+        os.makedirs(target_dir, exist_ok=True)
 
         # 0. Validación de tamaño comprimido previo si zip_source es una ruta en disco
         if isinstance(zip_source, (str, os.PathLike)) and os.path.exists(zip_source):

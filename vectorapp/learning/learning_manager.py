@@ -3,7 +3,7 @@ Gestor de Aprendizaje Autónomo Soberano para Vector (Fase P2).
 Coordina el aprendizaje continuo y adaptativo en 5 subsistemas especializados:
 1. MemoryLearning: Adquisición y consolidación de recuerdos vectoriales.
 2. GraphLearning: Asociación hebbiana y refuerzo de aristas tipadas en la red neuronal.
-3. PreferenceLearning: Extracción de preferencias del creador (Sebastian) y usuarios.
+3. PreferenceLearning: Extracción de preferencias explícitas por interlocutor.
 4. FeedbackLearning: Calibración basada en retroalimentación y correcciones de respuesta.
 5. ModelTraining: CONGELADO / DESACTIVADO por diseño de seguridad soberana.
 """
@@ -23,7 +23,7 @@ class ModelTrainingSubsystem:
     Controlador de pesos del modelo base.
     POR DISEÑO Y SEGURIDAD ARQUITECTÓNICA: Los pesos base de los modelos LLM (GGUF)
     están CONGELADOS en tiempo de ejecución. No se permite modificación de pesos neuronales
-    en caliente para evitar deriva catastrófica y pérdida de alineación con Sebastian.
+    en caliente para evitar deriva catastrófica y degradación del comportamiento del sistema.
     """
     is_frozen: bool = True
 

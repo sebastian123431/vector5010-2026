@@ -10,12 +10,14 @@ from .planner import CognitivePlanner, CognitivePlan
 from .executor import PlanExecutor
 from .critic import CognitiveCritic, CriticEvaluation
 from .verifier import CognitiveVerifier
+from .tool_adapter import vector_tool_adapter
 
 
 class ReasoningMode(str, Enum):
     """Modo de operación del motor cognitivo."""
-    PLAN_ONLY = "plan_only"    # Genera plan y simulación sin efectos colaterales (dry-run)
-    EXECUTE = "execute"        # Ejecuta efectivamente los pasos y herramientas del plan
+    PLAN_ONLY = "plan_only"          # Genera plan y simulación sin efectos colaterales (dry-run)
+    EXECUTE = "execute"              # Ejecuta efectivamente los pasos y herramientas del plan
+    PLAN_AND_EXECUTE = "execute"     # Alias semántico para planificar y ejecutar con herramientas
 
 
 class ReasoningEngine:
@@ -23,9 +25,10 @@ class ReasoningEngine:
     Orquestador cognitivo central que articula la cognición profunda de Vector.
     """
 
-    def __init__(self, tool_runner: Optional[Any] = None):
+    def __init__(self, tool_runner: Any = "default"):
         self.planner = CognitivePlanner()
-        self.executor = PlanExecutor(tool_runner=tool_runner)
+        actual_runner = vector_tool_adapter if tool_runner == "default" else tool_runner
+        self.executor = PlanExecutor(tool_runner=actual_runner)
         self.critic = CognitiveCritic()
         self.verifier = CognitiveVerifier()
 
@@ -74,6 +77,7 @@ class ReasoningEngine:
             "query": query,
             "interlocutor": interlocutor,
             "safety": safety_check,
+            "verifier": safety_check,
             "plan": plan.to_dict(),
             "execution": exec_res,
             "critic": critic_res.to_dict() if critic_res else None,

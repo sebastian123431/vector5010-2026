@@ -51,15 +51,18 @@ class MemoryManager:
         self,
         content: str,
         memory_type: Union[MemoryType, str] = MemoryType.SEMANTIC,
-        importance: float = 0.8,
-        user_name: str = "",
-        session_id: str = "",
+        importance: float = 0.5,
+        user_name: Optional[str] = None,
+        session_id: Optional[str] = None,
         tags: Optional[List[str]] = None,
         sync_to_db: bool = True,
         sync_to_network: bool = True,
+        scope: Optional[str] = None,
+        identity_id: Optional[str] = None
     ) -> str:
         """
         Almacena un recuerdo en el backend vectorial y sincroniza atómicamente con SQLite y la red neuronal.
+        Aplica aislamiento por scope (GLOBAL, PERSONAL, SESSION, PROJECT).
         """
         if isinstance(memory_type, str):
             try:
@@ -68,6 +71,10 @@ class MemoryManager:
                 m_type = MemoryType.SEMANTIC
         else:
             m_type = memory_type
+
+        norm_identity = (identity_id or (user_name.lower().strip() if user_name else "")).strip()
+        if scope is None:
+            scope = "PERSONAL" if norm_identity else ("SESSION" if session_id else "GLOBAL")
 
         # 1. Calcular embedding
         vec = self._get_embedding(content)
@@ -80,13 +87,13 @@ class MemoryManager:
             memory_type=m_type,
             importance=importance,
             confidence=0.95,
-            user_name=user_name,
+            user_name=norm_identity or user_name,
             session_id=session_id,
-            metadata={"tags": tags or []}
+            metadata={"tags": tags or [], "scope": scope, "identity_id": norm_identity}
         )
         item_id = self.backend.add(item)
 
-        # 3. Sincronizar con MemoryEntry en base de datos
+        # 3. Sincronizar con MemoryEntry en base de datos con scope real
         if sync_to_db:
             try:
                 from vectorapp.models import MemoryEntry
@@ -94,6 +101,11 @@ class MemoryManager:
                 db_entry = MemoryEntry(
                     content=content,
                     entry_type=db_type,
+                    identity_id=norm_identity,
+                    session_id=session_id or "",
+                    scope=scope,
+                    importance=importance,
+                    confidence=0.95
                 )
                 if vec:
                     db_entry.set_vector(vec)
@@ -101,8 +113,8 @@ class MemoryManager:
             except Exception as e_db:
                 logger.debug(f"[MemoryManager] Aviso guardando en SQLite: {e_db}")
 
-        # 4. Sincronizar con la Red Semántica si aplica
-        if sync_to_network:
+        # 4. Sincronizar con la Red Semántica si aplica (estrictamente restringido a memorias GLOBAL)
+        if sync_to_network and scope == "GLOBAL":
             try:
                 from vectorapp.neural_network import semantic_network
                 tag_label = "fact" if m_type == MemoryType.SEMANTIC else "memory"
@@ -120,11 +132,14 @@ class MemoryManager:
         filter_type: Optional[MemoryType] = None,
         user_name: Optional[str] = None,
         session_id: Optional[str] = None,
+        identity_id: Optional[str] = None,
+        scope: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Recupera recuerdos unificados consultando el backend vectorial, con filtrado estricto de identidad.
         """
         results = []
+        norm_user = (identity_id or user_name or "").strip().lower()
         q_vec = self._get_embedding(query)
 
         if q_vec is not None:
@@ -148,11 +163,16 @@ class MemoryManager:
                     "source": "vector_backend"
                 })
 
-        # Si hay pocos resultados o no hay embeddings, complementar con búsqueda relacional
+        # Si hay pocos resultados o no hay embeddings, complementar con búsqueda relacional prefiltrada por scope
         if len(results) < top_k:
             try:
                 from vectorapp.models import MemoryEntry
-                db_entries = MemoryEntry.recall(query, top_k=top_k)
+                db_entries = MemoryEntry.recall(
+                    query=query,
+                    top_k=top_k,
+                    identity_id=user_name,
+                    session_id=session_id
+                )
                 for entry in db_entries:
                     if not any(r["content"] == entry.content for r in results):
                         results.append({
@@ -160,8 +180,9 @@ class MemoryManager:
                             "content": entry.content,
                             "score": 0.70,
                             "memory_type": entry.entry_type,
-                            "user_name": user_name or "",
-                            "session_id": session_id or "",
+                            "user_name": entry.identity_id or (user_name if entry.scope == "GLOBAL" else ""),
+                            "session_id": entry.session_id or (session_id if entry.scope == "GLOBAL" else ""),
+                            "scope": entry.scope,
                             "source": "sqlite_db"
                         })
             except Exception as e_rel:
@@ -231,6 +252,12 @@ class MemoryManager:
             "semantic_network_neurons": network_neurons,
             "dimension": self.dimension,
         }
+
+    def get_active_backend(self) -> str:
+        """Retorna el nombre descriptivo del backend activo ('faiss', 'numpy', etc.)."""
+        if isinstance(self.backend, FaissMemoryBackend) and getattr(self.backend, "use_faiss", False):
+            return "faiss"
+        return "numpy"
 
 
 memory_manager = MemoryManager()

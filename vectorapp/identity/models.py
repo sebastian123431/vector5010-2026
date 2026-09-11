@@ -43,11 +43,6 @@ class IdentityState:
     metadata: Dict[str, Any] = field(default_factory=dict)
     was_changed: bool = False
 
-    def __iter__(self):
-        """Permite desempaquetar cómodamente como (state, was_changed) o usar directamente como state."""
-        yield self
-        yield self.was_changed
-
     def to_dict(self) -> Dict[str, Any]:
         return {
             "identity_id": self.identity_id,

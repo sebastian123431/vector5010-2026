@@ -9,7 +9,7 @@ from typing import Optional, Any, Dict
 from .action_policy import (
     require_action_confirmation,
     dangerous_endpoint,
-    creator_only,
+    high_impact_action,
     state_change_endpoint,
     read_only_endpoint,
 )

@@ -61,11 +61,13 @@ class BenchmarkRunner:
                 plan = self.planner.create_plan(c["prompt"])
                 ok = len(plan.steps) >= c.get("expected_steps_min", 1)
             elif cat == "causal":
-                # Análisis de relaciones semánticas causales
+                # Análisis de relaciones semánticas causales con evaluación real de expected_keywords
                 kw = c.get("expected_keywords", [])
                 plan = self.planner.create_plan(c["prompt"])
-                # Plan estructurado generado
-                ok = plan is not None and len(plan.steps) > 0
+                plan_text = " ".join([f"{s.description} {s.required_tool or ''}" for s in plan.steps]).lower()
+                prompt_lower = c["prompt"].lower()
+                matched_kw = [k for k in kw if (k.lower() in plan_text or k.lower() in prompt_lower)]
+                ok = plan is not None and len(plan.steps) > 0 and len(matched_kw) >= 2
             elif cat == "critic":
                 draft = c.get("draft_response", "")
                 crit = self.critic.evaluate(draft, query="código")
@@ -106,9 +108,23 @@ class BenchmarkRunner:
                     eq_warns = [w for w in res.get("security_findings", []) if "Igualdad" in w.get("title", "")]
                     ok = ok and len(eq_warns) > 0
             elif lang == "python":
-                diag = {"warnings": [{"type": "Bloque Except Vacío", "file": "test.py", "line": 4}]}
-                props = self.code_analyzer.generate_proposals(diag)
-                ok = len(props) > 0 and props[0]["issue_type"] == "reliability"
+                import tempfile
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    py_file = os.path.join(tmpdir, "bench_service.py")
+                    code_content = c.get("code", "")
+                    if "eval" not in code_content:
+                        code_content = f"import math, os\n{code_content}\ndef dynamic_exec(expr):\n    return eval(expr)\n"
+                    with open(py_file, "w", encoding="utf-8") as f:
+                        f.write(code_content)
+
+                    diag = self.code_analyzer.diagnose_project(tmpdir)
+                    props = self.code_analyzer.generate_proposals(diag)
+
+                    has_except = any("except" in str(w.get("type", "")).lower() for w in diag.get("warnings", []))
+                    has_eval = any("eval" in str(w.get("message", "")).lower() for w in diag.get("warnings", []))
+                    has_imports = len(diag.get("imports", set())) > 0
+                    has_props = len(props) > 0
+                    ok = has_except and has_props and has_imports and has_eval
             else:
                 ok = False
 
@@ -157,6 +173,33 @@ class BenchmarkRunner:
                 expected_types = set(c.get("memory_types", []))
                 actual_types = {mt.value for mt in MemoryType}
                 ok = expected_types.issubset(actual_types)
+            elif ctype == "isolation":
+                from ..memory.manager import MemoryManager
+                test_mgr = MemoryManager(use_faiss=False)
+                test_mgr.store("contraseña secreta JUAN-123", user_name="Juan", scope="PERSONAL", identity_id="juan")
+                test_mgr.store("preferencia python de seba", user_name="Seba", scope="PERSONAL", identity_id="seba")
+                test_mgr.store("conocimiento global de django", scope="GLOBAL")
+
+                seba_rec = test_mgr.recall(query="secreto", user_name="Seba", identity_id="seba")
+                leak = any("JUAN-123" in str(m) for m in seba_rec)
+                ok = not leak
+            elif ctype == "metrics":
+                retrieved_ids = c.get("retrieved_ids", ["doc1", "doc2", "doc3", "doc4", "doc5"])
+                relevant_ids = set(c.get("relevant_ids", ["doc2", "doc5"]))
+                k = c.get("k", 3)
+                top_k = retrieved_ids[:k]
+
+                rel_in_top_k = sum(1 for doc in top_k if doc in relevant_ids)
+                p_at_k = rel_in_top_k / k if k else 0.0
+                r_at_k = rel_in_top_k / len(relevant_ids) if relevant_ids else 0.0
+
+                mrr = 0.0
+                for idx, doc in enumerate(retrieved_ids, 1):
+                    if doc in relevant_ids:
+                        mrr = 1.0 / idx
+                        break
+
+                ok = (p_at_k >= c.get("min_p_at_k", 0.3)) and (mrr >= c.get("min_mrr", 0.5))
             else:
                 ok = False
 
@@ -272,7 +315,7 @@ class BenchmarkRunner:
                 sid = f"bench_turn_{int(time.time() * 1000)}"
                 all_turns_ok = True
                 for turn in c["turns"]:
-                    st, _ = identity_manager.process_message(turn["input"], session_id=sid)
+                    st = identity_manager.process_message(turn["input"], session_id=sid)
                     if st.identity_id != turn["expected_id"]:
                         all_turns_ok = False
                         break
@@ -280,9 +323,9 @@ class BenchmarkRunner:
 
             elif ctype == "explicit_switching":
                 sid = f"bench_switch_{int(time.time() * 1000)}"
-                s1, _ = identity_manager.process_message(c["turn_1"], session_id=sid)
-                s2, changed = identity_manager.process_message(c["turn_2"], session_id=sid)
-                ok = (s2.identity_id == c["expected_final_id"] and changed == c["expected_changed"])
+                s1 = identity_manager.process_message(c["turn_1"], session_id=sid)
+                s2 = identity_manager.process_message(c["turn_2"], session_id=sid)
+                ok = (s2.identity_id == c["expected_final_id"] and s2.was_changed == c["expected_changed"])
 
             elif ctype == "false_positive_rejection":
                 matched = 0
