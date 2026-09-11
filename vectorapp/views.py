@@ -61,6 +61,13 @@ from .query_optimizer import (
 from .vision import vector_vision
 from .sentinel import vector_sentinel
 from .context_compactor import ContextCompactor
+from .security import (
+    resolve_user_profile,
+    creator_only,
+    dangerous_endpoint,
+    state_change_endpoint,
+    read_only_endpoint,
+)
 
 import urllib.request
 import urllib.parse
@@ -871,16 +878,18 @@ def preparar_contexto_vector(
         elif not nombre_interlocutor and usuario and hasattr(usuario, "first_name") and usuario.first_name:
             nombre_interlocutor = usuario.first_name.capitalize()
 
-    es_seba = bool(nombre_interlocutor and nombre_interlocutor.lower() in ["sebastian", "seba", "sebastián", "sebitas", "creador"])
-    es_millaray = bool(nombre_interlocutor and nombre_interlocutor.lower() in ["millaray", "milla"])
+    user_profile = resolve_user_profile(user_obj=usuario, user_name=nombre_interlocutor, session=session)
+    es_seba = user_profile.is_creator
+    es_millaray = (user_profile.role.value == "trusted_user")
     es_sebastian = es_seba  # Compatibilidad con variables internas
-    nombre_display = "Seba" if es_seba else ("Millaray" if es_millaray else (nombre_interlocutor if nombre_interlocutor else ""))
-    interlocutor_ref = "Seba" if es_seba else ("Millaray" if es_millaray else (nombre_display if nombre_interlocutor else "el usuario"))
+    nombre_display = user_profile.display_name if nombre_interlocutor else ("Seba" if es_seba else "")
+    interlocutor_ref = user_profile.display_name if (es_seba or es_millaray or nombre_interlocutor) else "el usuario"
 
-    # Optimización cognitiva y clasificación de consulta
-    complexity = query_optimizer.classify_query(mensaje)
+    # Enrutamiento híbrido cognitivo y cálculo de complejidad
+    route_result = query_optimizer.route_query(mensaje, user_name=nombre_display or nombre_interlocutor)
+    complexity = route_result.complexity
     skip_flags = query_optimizer.should_skip_processing(mensaje, complexity)
-    proc_config = query_optimizer.get_processing_config(complexity)
+    proc_config = route_result.suggested_config
     needs_manager.evaluate(query=mensaje, complexity=complexity.value)
 
     mensaje_lower = mensaje.lower()
@@ -2585,6 +2594,7 @@ def neural_network_train(request):
         )
 
 @api_view(['POST'])
+@dangerous_endpoint
 def neural_network_prune(request):
     """
     Realiza poda de la red neuronal para optimizar el rendimiento.
@@ -2670,6 +2680,7 @@ def neural_network_backup(request):
         )
 
 @api_view(['POST'])
+@dangerous_endpoint
 def neural_network_reset(request):
     """
     Reinicia la red neuronal (solo para desarrollo) y persiste el reinicio.
@@ -2745,6 +2756,7 @@ def list_dynamic_tools(request):
         )
 
 @api_view(['POST'])
+@state_change_endpoint
 def create_dynamic_tool(request):
     """
     Crea una nueva herramienta dinámica basada en la descripción del usuario.
@@ -2866,6 +2878,7 @@ def execute_dynamic_tool(request):
         )
 
 @api_view(['DELETE'])
+@dangerous_endpoint
 def delete_dynamic_tool(request, tool_name):
     """
     Elimina una herramienta dinámica.
@@ -3214,13 +3227,17 @@ def optimizer_stats(request):
     Devuelve telemetría en tiempo real sobre la latencia de procesamiento,
     eficiencia de la caché y estado de necesidades internas de Vector.
     """
+    from .telemetry import telemetry_manager
     stats = query_optimizer.get_performance_stats()
     stats["needs"] = needs_manager.get_status()
     stats["top_need"] = getattr(needs_manager.get_top(), "name", None)
+    stats["telemetry"] = telemetry_manager.get_metrics_summary()
     return Response(stats)
 
 
+
 @api_view(['POST'])
+@state_change_endpoint
 def optimizer_clear_cache(request):
     """
     Limpia la caché en memoria de consultas y reinicia los contadores de caché.
@@ -3266,8 +3283,8 @@ def weather_locate_endpoint(request):
                     "label": f"📍 {label} (Red/IP)",
                     "source": "ipwho.is"
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Servicio ipwho.is no disponible: {e}")
 
     # 2. Intentar ip-api.com
     try:
@@ -3291,8 +3308,9 @@ def weather_locate_endpoint(request):
                     "label": f"📍 {label} (IP)",
                     "source": "ip-api.com"
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Servicio ip-api.com no disponible: {e}")
+
 
     # 3. Fallback inteligente regional
     return Response({

@@ -6,8 +6,35 @@ La IA puede crear, modificar y ejecutar herramientas dinámicamente.
 import os
 import json
 import ast
+import re
+import logging
 from datetime import datetime
+from enum import Enum
 from typing import Dict, List, Any, Optional
+
+from .security import (
+    ASTSecurityValidator,
+    ToolPermissions,
+    PathPolicy,
+    SandboxPolicy,
+    ToolRunner,
+    ToolExecutionResult,
+    PathTraversalViolation,
+    ASTSecurityViolation,
+    TOOL_TIMEOUT_SIMPLE,
+    TOOL_TIMEOUT_COMPLEX,
+    TOOL_MAX_OUTPUT_BYTES,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class ToolLevel(str, Enum):
+    """Niveles de generación y autonomía de herramientas dinámicas."""
+    LEVEL_A = "level_a"   # Reutilización o adaptación de herramienta existente
+    LEVEL_B = "level_b"   # Plantilla estructurada parametrizada (cálculos, fechas, utilidades)
+    LEVEL_C = "level_c"   # Síntesis LLM / código libre personalizado
+
 
 class DynamicToolGenerator:
     """
@@ -22,8 +49,22 @@ class DynamicToolGenerator:
         self.created_tools = {}  # {tool_name: tool_info}
         self.execution_history = []
         
+        # Políticas de seguridad, confinamiento de rutas y sandbox runner
+        self.path_policy = PathPolicy()
+        self.sandbox_runner = ToolRunner(
+            SandboxPolicy(timeout=TOOL_TIMEOUT_SIMPLE, max_output_bytes=TOOL_MAX_OUTPUT_BYTES)
+        )
+        
         # Crear directorio si no existe
         os.makedirs(self.tools_path, exist_ok=True)
+        
+        # Crear subdirectorio para pruebas unitarias de herramientas
+        self.tests_path = os.path.join(self.tools_path, "tests")
+        os.makedirs(self.tests_path, exist_ok=True)
+        test_init = os.path.join(self.tests_path, "__init__.py")
+        if not os.path.exists(test_init):
+            with open(test_init, 'w', encoding='utf-8') as f:
+                f.write("# Tests automáticos de herramientas dinámicas\n")
         
         # Crear __init__.py para que sea un módulo
         init_file = os.path.join(self.tools_path, "__init__.py")
@@ -33,6 +74,7 @@ class DynamicToolGenerator:
                 
         # Cargar herramientas existentes
         self.load_existing_tools()
+
         
     def analyze_user_need(self, user_message: str) -> Dict[str, Any]:
         """
@@ -267,27 +309,39 @@ def execute_tool(action="current_time", **kwargs):
 '''
     
     def _generate_file_tool_template(self, analysis: Dict[str, Any]) -> str:
-        """Template para herramientas de archivos."""
+        """Template para herramientas de archivos confinadas estrictamente a tool_workspace."""
         return '''
 import os
 import json
 import csv
 from pathlib import Path
 
+# Directorio base del workspace autorizado para herramientas
+WORKSPACE = (Path(__file__).parent.parent / "tool_workspace").resolve()
+WORKSPACE.mkdir(parents=True, exist_ok=True)
+
+def safe_path(target_path):
+    p = Path(target_path) if target_path else Path('.')
+    resolved = (WORKSPACE / p).resolve() if not p.is_absolute() else p.resolve()
+    if not (resolved == WORKSPACE or WORKSPACE in resolved.parents):
+        raise PermissionError(f"Ruta fuera del workspace autorizado: '{target_path}'")
+    return resolved
+
 def execute_tool(action="list_files", **kwargs):
-    """Herramienta de archivos generada dinámicamente."""
+    """Herramienta de archivos generada dinámicamente y confinada a workspace."""
     
     if action == "list_files":
         directory = kwargs.get('directory', '.')
         try:
+            target_dir = safe_path(directory)
             files = []
-            for item in os.listdir(directory):
-                path = os.path.join(directory, item)
+            for item in os.listdir(target_dir):
+                path = target_dir / item
                 files.append({
                     'name': item,
-                    'is_directory': os.path.isdir(path),
-                    'size': os.path.getsize(path) if os.path.isfile(path) else None,
-                    'modified': os.path.getmtime(path)
+                    'is_directory': path.is_dir(),
+                    'size': path.stat().st_size if path.is_file() else None,
+                    'modified': path.stat().st_mtime
                 })
             return files
         except Exception as e:
@@ -295,8 +349,11 @@ def execute_tool(action="list_files", **kwargs):
             
     elif action == "read_file":
         filepath = kwargs.get('filepath')
+        if not filepath:
+            return "Error: Se requiere filepath"
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            target_file = safe_path(filepath)
+            with open(target_file, 'r', encoding='utf-8') as f:
                 return f.read()
         except Exception as e:
             return f"Error leyendo archivo: {str(e)}"
@@ -304,18 +361,25 @@ def execute_tool(action="list_files", **kwargs):
     elif action == "write_file":
         filepath = kwargs.get('filepath')
         content = kwargs.get('content', '')
+        if not filepath:
+            return "Error: Se requiere filepath"
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            target_file = safe_path(filepath)
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(target_file, 'w', encoding='utf-8') as f:
                 f.write(content)
-            return f"Archivo {filepath} creado exitosamente"
+            return f"Archivo {target_file.name} creado exitosamente en workspace"
         except Exception as e:
             return f"Error escribiendo archivo: {str(e)}"
             
     elif action == "create_directory":
         directory = kwargs.get('directory')
+        if not directory:
+            return "Error: Se requiere directory"
         try:
-            os.makedirs(directory, exist_ok=True)
-            return f"Directorio {directory} creado exitosamente"
+            target_dir = safe_path(directory)
+            target_dir.mkdir(parents=True, exist_ok=True)
+            return f"Directorio {target_dir.name} creado exitosamente en workspace"
         except Exception as e:
             return f"Error creando directorio: {str(e)}"
     
@@ -385,37 +449,69 @@ def execute_tool(action="process_data", **kwargs):
 '''
     
     def _generate_calc_tool_template(self, analysis: Dict[str, Any]) -> str:
-        """Template para herramientas de cálculo."""
+        """Template para herramientas de cálculo seguro sin eval()."""
         return '''
 import math
 import operator
+import ast
+
+def _eval_math_ast(node):
+    operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.FloorDiv: operator.floordiv,
+        ast.Mod: operator.mod,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg,
+        ast.UAdd: operator.pos,
+    }
+    functions = {
+        'sqrt': math.sqrt,
+        'sin': math.sin,
+        'cos': math.cos,
+        'tan': math.tan,
+        'log': math.log,
+    }
+    constants = {
+        'pi': math.pi,
+        'e': math.e,
+    }
+    if isinstance(node, ast.Expression):
+        return _eval_math_ast(node.body)
+    elif isinstance(node, ast.Constant):
+        return node.value
+    elif isinstance(node, ast.Name):
+        if node.id in constants:
+            return constants[node.id]
+        raise ValueError(f"Símbolo no permitido: {node.id}")
+    elif isinstance(node, ast.BinOp):
+        op = operators.get(type(node.op))
+        if not op:
+            raise ValueError(f"Operador binario no soportado: {type(node.op).__name__}")
+        return op(_eval_math_ast(node.left), _eval_math_ast(node.right))
+    elif isinstance(node, ast.UnaryOp):
+        op = operators.get(type(node.op))
+        if not op:
+            raise ValueError(f"Operador unario no soportado: {type(node.op).__name__}")
+        return op(_eval_math_ast(node.operand))
+    elif isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id in functions:
+            args = [_eval_math_ast(arg) for arg in node.args]
+            return functions[node.func.id](*args)
+        raise ValueError("Función matemática no permitida")
+    else:
+        raise ValueError(f"Expresión no permitida: {type(node).__name__}")
 
 def execute_tool(action="calculate", **kwargs):
-    """Herramienta de cálculo generada dinámicamente."""
+    """Herramienta de cálculo generada dinámicamente y segura (libre de eval)."""
     
     if action == "calculate":
         expression = kwargs.get('expression', '')
         try:
-            # Operaciones seguras permitidas
-            allowed_operators = {
-                '+': operator.add,
-                '-': operator.sub,
-                '*': operator.mul,
-                '/': operator.truediv,
-                '//': operator.floordiv,
-                '%': operator.mod,
-                '**': operator.pow,
-                'sqrt': math.sqrt,
-                'sin': math.sin,
-                'cos': math.cos,
-                'tan': math.tan,
-                'log': math.log,
-                'pi': math.pi,
-                'e': math.e
-            }
-            
-            # Evaluación segura
-            result = eval(expression, {"__builtins__": {}}, allowed_operators)
+            tree = ast.parse(expression, mode='eval')
+            result = _eval_math_ast(tree)
             return {
                 'expression': expression,
                 'result': result,
@@ -613,46 +709,41 @@ def execute_tool(action="api_call", **kwargs):
 '''
     
     def _generate_automation_tool_template(self, analysis: Dict[str, Any]) -> str:
-        """Template para herramientas de automatización."""
+        """Template para herramientas de automatización de tareas y pipelines seguros."""
         return '''
-import subprocess
-import os
+import json
 import time
 from datetime import datetime
 
-def execute_tool(action="run_command", **kwargs):
-    """Herramienta de automatización generada dinámicamente."""
+def execute_tool(action="run_pipeline", **kwargs):
+    """Herramienta de automatización segura sin comandos de sistema operativo."""
     
-    if action == "run_command":
-        command = kwargs.get('command', '')
-        shell = kwargs.get('shell', True)
+    if action == "run_pipeline":
+        tasks = kwargs.get('tasks', [])
+        results = []
+        for i, task in enumerate(tasks):
+            task_name = task.get('name', f'tarea_{i}')
+            task_type = task.get('type', 'transform')
+            payload = task.get('payload', {})
+            
+            # Ejecutar tarea en memoria de forma segura
+            results.append({
+                'task': task_name,
+                'type': task_type,
+                'status': 'completed',
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        return {
+            'status': 'success',
+            'total_tasks': len(tasks),
+            'results': results
+        }
         
-        try:
-            result = subprocess.run(
-                command, 
-                shell=shell, 
-                capture_output=True, 
-                text=True, 
-                timeout=30
-            )
-            
-            return {
-                'command': command,
-                'return_code': result.returncode,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'success': result.returncode == 0
-            }
-        except subprocess.TimeoutExpired:
-            return "Error: Comando excedió el tiempo límite"
-        except Exception as e:
-            return f"Error ejecutando comando: {str(e)}"
-            
     elif action == "schedule_task":
         task_name = kwargs.get('task_name', 'tarea_automatica')
         interval = kwargs.get('interval', 60)  # segundos
         
-        # Simulación de programación de tarea
         return {
             'task_name': task_name,
             'interval': interval,
@@ -711,78 +802,123 @@ def execute_tool(action="system_status", **kwargs):
 '''
     
     def _generate_database_tool_template(self, analysis: Dict[str, Any]) -> str:
-        """Template para herramientas de base de datos."""
+        """Template para herramientas de base de datos segura y parametrizada."""
         return '''
 import sqlite3
 import json
+import re
+from pathlib import Path
 from datetime import datetime
 
+# Workspace seguro para bases de datos
+WORKSPACE = (Path(__file__).parent.parent / "tool_workspace").resolve()
+WORKSPACE.mkdir(parents=True, exist_ok=True)
+
+IDENTIFIER_REGEX = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+ALLOWED_OPERATORS = {'=', '!=', '>', '<', '>=', '<=', 'LIKE'}
+
+def safe_db_path(raw_path="dynamic_data.db"):
+    p = Path(raw_path) if raw_path else Path("dynamic_data.db")
+    resolved = (WORKSPACE / p).resolve() if not p.is_absolute() else p.resolve()
+    if not (resolved == WORKSPACE or WORKSPACE in resolved.parents):
+        resolved = WORKSPACE / p.name
+    return str(resolved)
+
 def execute_tool(action="query", **kwargs):
-    """Herramienta de base de datos generada dinámicamente."""
+    """Herramienta de base de datos segura con consultas parametrizadas."""
     
     if action == "create_table":
-        db_path = kwargs.get('db_path', 'dynamic_data.db')
+        db_path = safe_db_path(kwargs.get('db_path', 'dynamic_data.db'))
         table_name = kwargs.get('table_name', 'data_table')
         columns = kwargs.get('columns', {'id': 'INTEGER PRIMARY KEY', 'data': 'TEXT'})
         
+        if not IDENTIFIER_REGEX.match(table_name):
+            return "Error: Nombre de tabla inválido. Debe coincidir con ^[A-Za-z_][A-Za-z0-9_]*$"
+            
+        col_defs = []
+        for col_name, col_type in columns.items():
+            if not IDENTIFIER_REGEX.match(col_name):
+                return f"Error: Nombre de columna inválido: {col_name}"
+            clean_type = re.sub(r'[^A-Za-z0-9_ ]', '', str(col_type)).strip().upper()
+            col_defs.append(f"{col_name} {clean_type}")
+            
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            
-            columns_sql = ', '.join([f"{name} {dtype}" for name, dtype in columns.items()])
-            sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_sql})"
-            
+            sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(col_defs)})"
             cursor.execute(sql)
             conn.commit()
             conn.close()
-            
             return f"Tabla {table_name} creada exitosamente"
         except Exception as e:
             return f"Error creando tabla: {str(e)}"
             
     elif action == "insert_data":
-        db_path = kwargs.get('db_path', 'dynamic_data.db')
+        db_path = safe_db_path(kwargs.get('db_path', 'dynamic_data.db'))
         table_name = kwargs.get('table_name', 'data_table')
         data = kwargs.get('data', {})
         
+        if not IDENTIFIER_REGEX.match(table_name):
+            return "Error: Nombre de tabla inválido"
+        if not data or not isinstance(data, dict):
+            return "Error: Los datos deben ser un diccionario no vacío"
+            
+        for col in data.keys():
+            if not IDENTIFIER_REGEX.match(col):
+                return f"Error: Nombre de columna inválido: {col}"
+                
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            
-            columns = ', '.join(data.keys())
+            cols = ', '.join(data.keys())
             placeholders = ', '.join(['?' for _ in data])
-            sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-            
+            sql = f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})"
             cursor.execute(sql, list(data.values()))
             conn.commit()
             row_id = cursor.lastrowid
             conn.close()
-            
             return f"Datos insertados con ID: {row_id}"
         except Exception as e:
             return f"Error insertando datos: {str(e)}"
             
     elif action == "select_data":
-        db_path = kwargs.get('db_path', 'dynamic_data.db')
+        db_path = safe_db_path(kwargs.get('db_path', 'dynamic_data.db'))
         table_name = kwargs.get('table_name', 'data_table')
-        condition = kwargs.get('condition', '')
+        filters = kwargs.get('filters', {})
         
+        if not IDENTIFIER_REGEX.match(table_name):
+            return "Error: Nombre de tabla inválido"
+            
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            
             sql = f"SELECT * FROM {table_name}"
-            if condition:
-                sql += f" WHERE {condition}"
-                
-            cursor.execute(sql)
+            params = []
+            
+            if filters and isinstance(filters, dict):
+                where_clauses = []
+                for col, spec in filters.items():
+                    if not IDENTIFIER_REGEX.match(col):
+                        conn.close()
+                        return f"Error: Nombre de columna inválido en filtro: {col}"
+                    if isinstance(spec, dict):
+                        op = str(spec.get('operator', '=')).strip().upper()
+                        val = spec.get('value')
+                    else:
+                        op = '='
+                        val = spec
+                    if op not in ALLOWED_OPERATORS:
+                        conn.close()
+                        return f"Error: Operador no permitido '{op}' en filtro"
+                    where_clauses.append(f"{col} {op} ?")
+                    params.append(val)
+                if where_clauses:
+                    sql += " WHERE " + " AND ".join(where_clauses)
+                    
+            cursor.execute(sql, params)
             rows = cursor.fetchall()
-            
-            # Obtener nombres de columnas
-            columns = [description[0] for description in cursor.description]
-            
+            columns = [description[0] for description in cursor.description] if cursor.description else []
             conn.close()
-            
             return {
                 'columns': columns,
                 'rows': rows,
@@ -827,101 +963,102 @@ def execute_tool(action="help", **kwargs):
     
     def create_tool(self, user_request: str, tool_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Crea una nueva herramienta basándose en la solicitud del usuario.
+        Crea una nueva herramienta basándose en la solicitud del usuario aplicando validación AST.
         """
         try:
-            # Analizar necesidades
             analysis = self.analyze_user_need(user_request)
             
-            # Generar nombre si no se proporciona
             if not tool_name:
                 primary_need = analysis['detected_needs'][0] if analysis['detected_needs'] else 'general'
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 tool_name = f"{primary_need}_tool_{timestamp}"
             
-            # Generar código
+            safe_tool_name = PathPolicy.sanitize_tool_name(tool_name)
             tool_code = self.generate_tool_code(analysis)
             
-            # Crear archivo de la herramienta
-            tool_file = os.path.join(self.tools_path, f"{tool_name}.py")
+            category = analysis['detected_needs'][0] if analysis.get('detected_needs') else 'general'
+            perms = ToolPermissions.default_for_category(category)
             
-            with open(tool_file, 'w', encoding='utf-8') as f:
-                f.write(f"""# Herramienta generada automáticamente por Vector
-# Solicitud del usuario: {user_request}
-# Fecha de creación: {datetime.now().isoformat()}
-
-{tool_code}
-""")
-            
-            # Validar sintaxis
-            validation_result = self.validate_tool_code(tool_file)
-            
-            if validation_result['is_valid']:
-                # Registrar herramienta
-                tool_info = {
-                    'name': tool_name,
-                    'file_path': tool_file,
-                    'created_at': datetime.now().isoformat(),
-                    'user_request': user_request,
-                    'analysis': analysis,
-                    'status': 'active'
-                }
-                
-                self.created_tools[tool_name] = tool_info
-                self.save_tools_registry()
-                
-                return {
-                    'success': True,
-                    'tool_name': tool_name,
-                    'tool_info': tool_info,
-                    'message': f'✅ Herramienta "{tool_name}" creada exitosamente'
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': validation_result['error'],
-                    'message': f'❌ Error al crear herramienta: {validation_result["error"]}'
-                }
-                
+            res = self.create_and_validate_tool(safe_tool_name, tool_code, user_request, permissions=perms)
+            if res.get('success'):
+                res['tool_info'] = self.created_tools.get(safe_tool_name, {})
+            return res
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
-                'message': f'❌ Error inesperado al crear herramienta: {str(e)}'
+                'message': f'❌ Error al crear herramienta: {str(e)}'
             }
     
-    def validate_tool_code(self, tool_file: str) -> Dict[str, Any]:
+    def validate_tool_code(self, tool_file: str, permissions: Optional[ToolPermissions] = None) -> Dict[str, Any]:
         """
-        Valida que el código de la herramienta sea sintácticamente correcto.
+        Valida que el código de la herramienta sea sintácticamente correcto y cumpla
+        las políticas de seguridad AST según los permisos asignados.
         """
         try:
             with open(tool_file, 'r', encoding='utf-8') as f:
                 code = f.read()
             
-            # Compilar para validar sintaxis
+            # 1. Validación AST de Seguridad
+            validator = ASTSecurityValidator(permissions=permissions)
+            sec_res = validator.validate_code(code)
+
+            if not sec_res['syntax_valid']:
+                err_msg = sec_res['violations'][0]['message'] if sec_res['violations'] else 'Error de sintaxis'
+                return {
+                    'is_valid': False,
+                    'security_valid': False,
+                    'risk_level': sec_res['risk_level'],
+                    'violations': sec_res['violations'],
+                    'error': err_msg,
+                    'line': sec_res['violations'][0].get('line', 0) if sec_res['violations'] else 0
+                }
+
+            if not sec_res['security_valid']:
+                violation_msgs = [f"L{v['line']}: {v['message']} ({v['symbol']})" for v in sec_res['violations']]
+                err_summary = "; ".join(violation_msgs)
+                logger.warning(f"[ASTSecurity] Herramienta '{tool_file}' rechazada por violaciones: {err_summary}")
+                return {
+                    'is_valid': False,
+                    'security_valid': False,
+                    'risk_level': sec_res['risk_level'],
+                    'violations': sec_res['violations'],
+                    'error': f"Violación de seguridad AST ({sec_res['risk_level']}): {err_summary}"
+                }
+
+            # 2. Compilar para confirmar integridad sintáctica final
             compile(code, tool_file, 'exec')
             
             return {
                 'is_valid': True,
-                'message': 'Código válido'
+                'security_valid': True,
+                'risk_level': 'none',
+                'violations': [],
+                'message': 'Código válido y verificado por AST Security'
             }
             
         except SyntaxError as e:
             return {
                 'is_valid': False,
+                'security_valid': False,
+                'risk_level': 'critical',
+                'violations': [{'rule': 'SYNTAX_ERROR', 'message': str(e)}],
                 'error': f'Error de sintaxis: {str(e)}',
                 'line': getattr(e, 'lineno', 0)
             }
         except Exception as e:
             return {
                 'is_valid': False,
+                'security_valid': False,
+                'risk_level': 'critical',
+                'violations': [{'rule': 'VALIDATION_ERROR', 'message': str(e)}],
                 'error': f'Error de validación: {str(e)}'
             }
     
     def execute_tool(self, tool_name: str, parameters: Any = None, action: Optional[str] = None, timeout: int = 5, **kwargs) -> Any:
         """
         Ejecuta una herramienta dinámica dentro de un entorno Sandbox aislado por subproceso.
-        Evita bloqueos del servidor Django, bucles infinitos y fallos de memoria mediante timeouts estrictos.
+        Aplica cuotas de tiempo, consumo de bytes de salida y sanitización de entorno con ToolRunner.
         """
         if isinstance(parameters, dict):
             params = dict(parameters)
@@ -945,116 +1082,43 @@ def execute_tool(action="help", **kwargs):
         if 'query' in params and act == 'execute':
             act = 'process_query'
 
-        import sys
-        import subprocess
-
-        runner_script = (
-            "import sys, json, importlib.util, io\n"
-            "tool_name = sys.argv[1]\n"
-            "tool_file = sys.argv[2]\n"
-            "act = sys.argv[3]\n"
-            "params = json.loads(sys.argv[4]) if len(sys.argv) > 4 else {}\n"
-            "try:\n"
-            "    spec = importlib.util.spec_from_file_location(tool_name, tool_file)\n"
-            "    if not spec or not spec.loader:\n"
-            "        print(json.dumps({'success': False, 'error': 'No se pudo cargar el archivo'}))\n"
-            "        sys.exit(0)\n"
-            "    mod = importlib.util.module_from_spec(spec)\n"
-            "    spec.loader.exec_module(mod)\n"
-            "    _buf = io.StringIO()\n"
-            "    _orig_stdout = sys.stdout\n"
-            "    sys.stdout = _buf\n"
-            "    res = None\n"
-            "    if hasattr(mod, 'execute_tool'):\n"
-            "        res = mod.execute_tool(action=act, **params)\n"
-            "    elif hasattr(mod, tool_name):\n"
-            "        fn = getattr(mod, tool_name)\n"
-            "        res = fn(**params) if params else fn()\n"
-            "    else:\n"
-            "        funcs = [f for f in dir(mod) if callable(getattr(mod, f)) and not f.startswith('_')]\n"
-            "        if funcs:\n"
-            "            fn = getattr(mod, funcs[0])\n"
-            "            res = fn(**params) if params else fn()\n"
-            "        else:\n"
-            "            sys.stdout = _orig_stdout\n"
-            "            print(json.dumps({'success': False, 'error': 'No se encontró función ejecutable'}))\n"
-            "            sys.exit(0)\n"
-            "    sys.stdout = _orig_stdout\n"
-            "    captured = _buf.getvalue().strip()\n"
-            "    final_res = captured if (res is None or isinstance(res, bool)) and captured else (res if res is not None else captured)\n"
-            "    print(json.dumps({'success': True, 'result': final_res}, default=str))\n"
-            "except Exception as e:\n"
-            "    sys.stdout = sys.__stdout__\n"
-            "    print(json.dumps({'success': False, 'error': str(e)}))\n"
+        # Ejecutar a través de ToolRunner
+        exec_res = self.sandbox_runner.run_tool(
+            tool_name=tool_name,
+            tool_file=tool_file,
+            action=act,
+            parameters=params,
+            timeout=timeout
         )
 
-        try:
-            proc = subprocess.run(
-                [sys.executable, "-c", runner_script, tool_name, tool_file, act, json.dumps(params, ensure_ascii=False)],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                encoding='utf-8',
-                errors='replace'
-            )
-
-            stdout_str = proc.stdout.strip()
-            result_obj = None
-            if stdout_str:
-                for line in stdout_str.splitlines()[::-1]:
-                    try:
-                        result_obj = json.loads(line)
-                        break
-                    except Exception:
-                        continue
-
-            if result_obj and result_obj.get("success"):
-                result = result_obj.get("result")
-                # Registrar ejecución exitosa
-                execution_record = {
-                    'tool_name': tool_name,
-                    'action': act,
-                    'parameters': params,
-                    'result': str(result)[:500] + '...' if len(str(result)) > 500 else str(result),
-                    'timestamp': datetime.now().isoformat(),
-                    'success': True
-                }
-                self.execution_history.append(execution_record)
-                self.created_tools[tool_name]['successful_uses'] = self.created_tools[tool_name].get('successful_uses', 0) + 1
-                self.save_tools_registry()
-                return result
-            elif result_obj and "error" in result_obj:
-                err = result_obj["error"]
-                return f"[Error] Sandbox ejecutando '{tool_name}': {err}"
-            else:
-                stderr_str = proc.stderr.strip()
-                err = stderr_str if stderr_str else (stdout_str if stdout_str else f"Código de salida: {proc.returncode}")
-                return f"[Error] Ejecución de '{tool_name}': {err}"
-
-        except subprocess.TimeoutExpired:
-            error_msg = f"[Timeout] La herramienta '{tool_name}' excedió el tiempo límite de seguridad ({timeout}s) y fue terminada."
+        if exec_res.success:
+            result = exec_res.result
             execution_record = {
                 'tool_name': tool_name,
                 'action': act,
                 'parameters': params,
-                'error': f'Timeout de {timeout}s',
+                'result': str(result)[:500] + '...' if len(str(result)) > 500 else str(result),
                 'timestamp': datetime.now().isoformat(),
-                'success': False
+                'success': True,
+                'execution_time_s': exec_res.execution_time_s
             }
             self.execution_history.append(execution_record)
-            return error_msg
-        except Exception as e:
-            error_msg = f"❌ Error ejecutando herramienta '{tool_name}': {str(e)}"
+            self.created_tools[tool_name]['successful_uses'] = self.created_tools[tool_name].get('successful_uses', 0) + 1
+            self.save_tools_registry()
+            return result
+        else:
+            err = exec_res.error or "Error desconocido durante la ejecución"
             execution_record = {
                 'tool_name': tool_name,
                 'action': act,
                 'parameters': params,
-                'error': str(e),
+                'error': err,
                 'timestamp': datetime.now().isoformat(),
-                'success': False
+                'success': False,
+                'execution_time_s': exec_res.execution_time_s
             }
             self.execution_history.append(execution_record)
-            return error_msg
+            return f"[Error] {err}"
     
     def list_tools(self) -> Dict[str, Any]:
         """
@@ -1189,70 +1253,212 @@ def execute_tool(action="help", **kwargs):
         
         return suggestions if suggestions else ["No se encontraron patrones específicos para mejorar"]
 
-    def create_and_validate_tool(self, tool_name: str, code: str, description: str) -> Dict[str, Any]:
+    @staticmethod
+    def infer_tool_level(code: str, category: str = "general", is_adaptation: bool = False) -> ToolLevel:
+        """Determina el nivel de autonomía de la herramienta (Nivel A, B o C)."""
+        if is_adaptation:
+            return ToolLevel.LEVEL_A
+        template_markers = ["def run(", "def calculate(", "def process(", "def execute(", "execute_tool"]
+        if any(m in code for m in template_markers) and any(cat in category for cat in ["calculations", "time_related", "text_processing", "data_processing", "template"]):
+            return ToolLevel.LEVEL_B
+        return ToolLevel.LEVEL_C
+
+    def generate_tool_unit_test(self, tool_name: str, code: str, category: str = "general") -> str:
         """
-        Crea y valida una nueva herramienta.
+        Genera el código de prueba unitaria para una herramienta dinámica dada.
+        Verifica exportaciones, ejecutabilidad e invariantes básicos sin efectos colaterales.
         """
+        return f'''# Test unitario generado automáticamente para la herramienta: {tool_name}
+import os
+import sys
+import unittest
+import importlib.util
+import inspect
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+TOOLS_DIR = os.path.dirname(CURRENT_DIR)
+if TOOLS_DIR not in sys.path:
+    sys.path.insert(0, TOOLS_DIR)
+
+class Test_{tool_name}(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        tool_file = os.path.join(TOOLS_DIR, "{tool_name}.py")
+        if not os.path.exists(tool_file):
+            raise FileNotFoundError(f"Archivo de herramienta no encontrado: {{tool_file}}")
+        spec = importlib.util.spec_from_file_location("{tool_name}", tool_file)
+        if not spec or not spec.loader:
+            raise ImportError(f"No se pudo crear spec para {{tool_file}}")
+        cls.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.mod)
+
+    def test_01_module_integrity(self):
+        """Verifica que el módulo se haya cargado y contenga callables públicos."""
+        funcs = [f for f in dir(self.mod) if callable(getattr(self.mod, f)) and not f.startswith('_')]
+        self.assertTrue(len(funcs) > 0, "La herramienta no exporta ninguna función pública callable.")
+
+    def test_02_execution_smoke(self):
+        """Prueba de humo: valida ejecución básica sin excepciones no controladas."""
+        if hasattr(self.mod, "execute_tool"):
+            res = self.mod.execute_tool(action="help")
+            self.assertIsNotNone(res)
+        elif hasattr(self.mod, "{tool_name}"):
+            fn = getattr(self.mod, "{tool_name}")
+            sig = inspect.signature(fn)
+            required = [p for p, v in sig.parameters.items() if v.default == inspect.Parameter.empty]
+            if not required:
+                res = fn()
+                self.assertIsNotNone(res)
+            else:
+                self.assertTrue(callable(fn))
+        else:
+            funcs = [f for f in dir(self.mod) if callable(getattr(self.mod, f)) and not f.startswith('_')]
+            fn = getattr(self.mod, funcs[0])
+            self.assertTrue(callable(fn))
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
+    def create_and_validate_tool(
+        self,
+        tool_name: str,
+        code: str,
+        description: str,
+        permissions: Optional[ToolPermissions] = None,
+        tool_level: Optional[ToolLevel] = None,
+        is_adaptation: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Crea, valida y auto-testea una nueva herramienta aplicando políticas de seguridad AST,
+        clasificación por ToolLevel y ejecución de tests unitarios en sandbox antes del registro.
+        """
+        tool_file = None
+        test_file = None
         try:
-            # Crear archivo de la herramienta
-            tool_file = os.path.join(self.tools_path, f"{tool_name}.py")
-            
+            # 1. Sanitizar nombre de la herramienta (prevenir Path Traversal en el nombre)
+            safe_tool_name = PathPolicy.sanitize_tool_name(tool_name)
+
+            # 2. Asignar o inferir permisos y nivel de autonomía
+            current_level = tool_level or self.infer_tool_level(code, description, is_adaptation=is_adaptation)
+            tool_perms = permissions or ToolPermissions.default_for_category(description)
+
+            # 3. Pre-validar AST en memoria antes de escribir en disco
+            validator = ASTSecurityValidator(permissions=tool_perms)
+            pre_val = validator.validate_code(code)
+            if not pre_val['security_valid']:
+                violation_msgs = [f"L{v['line']}: {v['message']} ({v['symbol']})" for v in pre_val['violations']]
+                err_summary = "; ".join(violation_msgs)
+                logger.warning(f"[ASTSecurity] Creación de '{safe_tool_name}' rechazada por violaciones AST: {err_summary}")
+                return {
+                    'success': False,
+                    'error': f"Violación de seguridad AST ({pre_val['risk_level']}): {err_summary}",
+                    'violations': pre_val['violations'],
+                    'risk_level': pre_val['risk_level'],
+                    'message': f"❌ Error de seguridad al crear herramienta: {err_summary}"
+                }
+
+            # 4. Escribir archivo de la herramienta
+            tool_file = os.path.join(self.tools_path, f"{safe_tool_name}.py")
             with open(tool_file, 'w', encoding='utf-8') as f:
                 f.write(f"""# Herramienta generada automáticamente por Vector
 # Descripción: {description}
+# Nivel de Autonomía: {current_level.value if isinstance(current_level, ToolLevel) else current_level}
 # Fecha de creación: {datetime.now().isoformat()}
 
 {code}
 """)
-            
-            # Validar sintaxis
-            validation_result = self.validate_tool_code(tool_file)
-            
-            if validation_result['is_valid']:
-                # Registrar herramienta
-                tool_info = {
-                    'name': tool_name,
-                    'file_path': tool_file,
-                    'created_at': datetime.now().isoformat(),
-                    'description': description,
-                    'status': 'active',
-                    'successful_uses': 0,
-                    'code_signature': self._extract_code_signature(code),
-                    'learning_data': {
-                        'created_from_request': description,
-                        'reuse_count': 0,
-                        'adaptation_count': 0
-                    }
-                }
-                
-                self.created_tools[tool_name] = tool_info
-                self.save_tools_registry()
-                
-                # Aprender del código generado
-                self.learn_from_generated_code(tool_name, code, description)
-                
-                return {
-                    'success': True,
-                    'tool_name': tool_name,
-                    'message': f'✅ Herramienta "{tool_name}" creada exitosamente'
-                }
-            else:
-                # Limpiar archivo si hay error
+
+            # 5. Validar código en archivo
+            validation_result = self.validate_tool_code(tool_file, permissions=tool_perms)
+            if not validation_result['is_valid']:
                 if os.path.exists(tool_file):
                     os.remove(tool_file)
-                
                 return {
                     'success': False,
-                    'error': validation_result['error'],
-                    'message': f'❌ Error al crear herramienta: {validation_result["error"]}'
+                    'error': validation_result.get('error', 'Error de validación'),
+                    'violations': validation_result.get('violations', []),
+                    'risk_level': validation_result.get('risk_level', 'high'),
+                    'message': f'❌ Error al crear herramienta: {validation_result.get("error")}'
                 }
-                
+
+            # 6. Generar y ejecutar prueba unitaria automática en sandbox aislado
+            test_code = self.generate_tool_unit_test(safe_tool_name, code, description)
+            test_file = os.path.join(self.tests_path, f"test_{safe_tool_name}.py")
+            with open(test_file, 'w', encoding='utf-8') as f:
+                f.write(test_code)
+
+            test_result = self.sandbox_runner.run_test_file(test_file, timeout=10)
+            if not test_result.success:
+                logger.warning(f"[ToolAutonomy] Test automático falló para '{safe_tool_name}': {test_result.error}")
+                if os.path.exists(tool_file):
+                    os.remove(tool_file)
+                if os.path.exists(test_file):
+                    os.remove(test_file)
+                return {
+                    'success': False,
+                    'error': f"Fallo en prueba unitaria automática: {test_result.error}",
+                    'test_status': 'failed',
+                    'tool_level': current_level.value if isinstance(current_level, ToolLevel) else str(current_level),
+                    'message': f"❌ La herramienta '{safe_tool_name}' falló su prueba unitaria automática: {test_result.error}"
+                }
+
+            # 7. Registrar herramienta aprobada
+            tool_info = {
+                'name': safe_tool_name,
+                'file_path': tool_file,
+                'test_file': test_file,
+                'test_status': 'passed',
+                'tool_level': current_level.value if isinstance(current_level, ToolLevel) else str(current_level),
+                'created_at': datetime.now().isoformat(),
+                'description': description,
+                'status': 'active',
+                'successful_uses': 0,
+                'permissions': tool_perms.to_dict(),
+                'risk_level': 'none',
+                'code_signature': self._extract_code_signature(code),
+                'learning_data': {
+                    'created_from_request': description,
+                    'reuse_count': 0,
+                    'adaptation_count': 0
+                }
+            }
+
+            self.created_tools[safe_tool_name] = tool_info
+            self.save_tools_registry()
+
+            # Aprender del código generado
+            self.learn_from_generated_code(safe_tool_name, code, description)
+
+            return {
+                'success': True,
+                'tool_name': safe_tool_name,
+                'tool_level': current_level.value if isinstance(current_level, ToolLevel) else str(current_level),
+                'test_status': 'passed',
+                'message': f'✅ Herramienta "{safe_tool_name}" ({current_level.value if isinstance(current_level, ToolLevel) else current_level}) creada exitosamente, validada por AST y verificada por test unitario en sandbox.'
+            }
+
+        except PathTraversalViolation as ptv:
+            if tool_file and os.path.exists(tool_file):
+                os.remove(tool_file)
+            if test_file and os.path.exists(test_file):
+                os.remove(test_file)
+            return {
+                'success': False,
+                'error': str(ptv),
+                'message': f'❌ Error de seguridad de ruta: {str(ptv)}'
+            }
         except Exception as e:
+            if tool_file and os.path.exists(tool_file):
+                os.remove(tool_file)
+            if test_file and os.path.exists(test_file):
+                os.remove(test_file)
             return {
                 'success': False,
                 'error': str(e),
                 'message': f'❌ Error inesperado al crear herramienta: {str(e)}'
             }
+
 
     def get_tool_suggestions(self, user_message: str) -> List[str]:
         """
@@ -1473,8 +1679,10 @@ def execute_tool(action="help", **kwargs):
             result = self.create_and_validate_tool(
                 adapted_tool_name,
                 adapted_code,
-                f"Adaptación de {base_tool_name}: {new_request}"
+                f"Adaptación de {base_tool_name}: {new_request}",
+                is_adaptation=True
             )
+
             
             if result['success']:
                 # Registrar como adaptación

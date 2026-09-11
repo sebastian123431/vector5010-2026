@@ -10,11 +10,29 @@ import zipfile
 import ast
 import json
 import time
+import shutil
+import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Set
+from collections import defaultdict
+from enum import Enum
+from dataclasses import dataclass, field
 
 from .local_engine import VectorLocalEngine
 from .neural_network import semantic_network
+from .security.exceptions import ZipBombViolation, PathTraversalViolation
+from .javascript_engine import javascript_engine
+
+logger = logging.getLogger(__name__)
+
+# Límites de seguridad configurables para prevención de ZIP bombs
+MAX_ZIP_FILES = 5000
+MAX_ZIP_COMPRESSED_SIZE = 100 * 1024 * 1024      # 100 MB de archivo zip
+MAX_ZIP_UNCOMPRESSED_SIZE = 500 * 1024 * 1024    # 500 MB descomprimidos en total
+MAX_SINGLE_FILE_SIZE = 20 * 1024 * 1024          # 20 MB por archivo individual
+MAX_DIRECTORY_DEPTH = 15                          # Máxima profundidad de carpetas
+MAX_COMPRESSION_RATIO = 100.0                     # Ratio de compresión sospechoso
+CHUNK_SIZE = 64 * 1024                           # 64 KB para lectura por chunks
 
 # Extensiones de código analizadas
 CODE_EXTENSIONS = {
@@ -42,6 +60,92 @@ IGNORED_EXTENSIONS = {
 }
 
 
+class ProposalType(str, Enum):
+    """Tipos de propuestas de mejora de código."""
+    SECURITY = "security"
+    PERFORMANCE = "performance"
+    CODE_STYLE = "code_style"
+    RELIABILITY = "reliability"
+    DEAD_CODE = "dead_code"
+
+
+@dataclass
+class ImprovementProposal:
+    """Propuesta estructurada de refactorización o mejora."""
+    proposal_id: str
+    target_file: str
+    target_symbol: str
+    issue_type: ProposalType
+    description: str
+    diff_preview: str = ""
+    status: str = "pending_review"
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "proposal_id": self.proposal_id,
+            "target_file": self.target_file,
+            "target_symbol": self.target_symbol,
+            "issue_type": self.issue_type.value,
+            "description": self.description,
+            "diff_preview": self.diff_preview,
+            "status": self.status,
+            "created_at": self.created_at
+        }
+
+
+class CallGraph:
+    """
+    Grafo de llamadas y dependencias de código entre funciones y módulos.
+    Calcula callers, callees y realiza análisis de impacto.
+    """
+    def __init__(self):
+        self.callers: Dict[str, Set[str]] = defaultdict(set)
+        self.callees: Dict[str, Set[str]] = defaultdict(set)
+        self.module_deps: Dict[str, Set[str]] = defaultdict(set)
+        self.symbol_files: Dict[str, str] = {}
+
+    def add_call(self, caller: str, callee: str, file_path: str = ""):
+        self.callees[caller].add(callee)
+        self.callers[callee].add(caller)
+        if file_path:
+            self.symbol_files[caller] = file_path
+            if callee not in self.symbol_files:
+                self.symbol_files[callee] = file_path
+
+    def add_dependency(self, module: str, imported_module: str):
+        self.module_deps[module].add(imported_module)
+
+    def impact_analysis(self, symbol_or_module: str) -> Dict[str, Any]:
+        """
+        Calcula el radio de impacto de modificar un símbolo o módulo dado.
+        """
+        impacted_callers = set()
+        to_visit = [symbol_or_module]
+        visited = set()
+
+        while to_visit:
+            curr = to_visit.pop(0)
+            if curr in visited:
+                continue
+            visited.add(curr)
+            direct_callers = self.callers.get(curr, set())
+            for c in direct_callers:
+                impacted_callers.add(c)
+                if c not in visited:
+                    to_visit.append(c)
+
+        impacted_files = {self.symbol_files.get(s, "") for s in impacted_callers if self.symbol_files.get(s)}
+
+        return {
+            "target": symbol_or_module,
+            "direct_callers": sorted(list(self.callers.get(symbol_or_module, set()))),
+            "total_impacted_callers": sorted(list(impacted_callers)),
+            "impacted_files": sorted(list(impacted_files)),
+            "impact_level": "high" if len(impacted_callers) > 5 else ("medium" if impacted_callers else "low")
+        }
+
+
 class ProjectCodeAnalyzer:
     """
     Analizador profundo de código fuente capaz de descomprimir proyectos ZIP,
@@ -54,11 +158,13 @@ class ProjectCodeAnalyzer:
             workspace_dir = os.path.join(base_app, "workspace", "proyectos")
         self.workspace_dir = workspace_dir
         os.makedirs(self.workspace_dir, exist_ok=True)
+        self.call_graph = CallGraph()
 
     def extract_zip(self, zip_source, project_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Descomprime de forma segura un archivo ZIP protegiendo contra Zip-Slip.
-        Retorna la ruta del proyecto extraído y metadatos básicos.
+        Descomprime de forma segura un archivo ZIP protegiendo contra Zip-Slip y Zip-Bombs.
+        Aplica cuotas de archivos, tamaño acumulado, profundidad y ratio de compresión.
+        Realiza lectura en chunks y rollback automático en caso de violación.
         """
         if not project_name:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -68,47 +174,108 @@ class ProjectCodeAnalyzer:
         os.makedirs(target_dir, exist_ok=True)
 
         extracted_files = []
-        
-        with zipfile.ZipFile(zip_source, 'r') as zf:
-            for member in zf.infolist():
-                filename = member.filename
-                
-                # Protección estricta Zip Slip (evitar path traversal)
-                target_path = os.path.abspath(os.path.join(target_dir, filename))
-                if not target_path.startswith(os.path.abspath(target_dir)):
-                    continue # Saltar archivo sospechoso fuera del target
+        total_uncompressed_size = 0
 
-                # Ignorar carpetas y archivos binarios pesados
-                parts = filename.replace('\\', '/').split('/')
-                if any(p in IGNORED_DIRS for p in parts):
-                    continue
-                ext = os.path.splitext(filename)[1].lower()
-                if ext in IGNORED_EXTENSIONS:
-                    continue
+        try:
+            with zipfile.ZipFile(zip_source, 'r') as zf:
+                members = zf.infolist()
 
-                if member.is_dir():
-                    os.makedirs(target_path, exist_ok=True)
-                else:
-                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                    with zf.open(member) as source, open(target_path, "wb") as target:
-                        target.write(source.read())
-                    extracted_files.append(target_path)
+                # 1. Validación de cantidad máxima de archivos
+                if len(members) > MAX_ZIP_FILES:
+                    raise ZipBombViolation(
+                        f"El archivo ZIP contiene {len(members)} entradas, excediendo el límite de {MAX_ZIP_FILES}."
+                    )
 
-        return {
-            "project_name": project_name,
-            "project_dir": target_dir,
-            "extracted_count": len(extracted_files),
-            "files": extracted_files
-        }
+                for member in members:
+                    filename = member.filename
+
+                    # 2. Protección estricta Zip Slip (evitar path traversal)
+                    target_path = os.path.abspath(os.path.join(target_dir, filename))
+                    if not target_path.startswith(os.path.abspath(target_dir)):
+                        logger.warning(f"[ZipSecurity] Zip-Slip bloqueado para: {filename}")
+                        continue
+
+                    # 3. Validación de profundidad de directorios
+                    parts = filename.replace('\\', '/').strip('/').split('/')
+                    if len(parts) > MAX_DIRECTORY_DEPTH:
+                        raise ZipBombViolation(
+                            f"Profundidad de directorio excesiva ({len(parts)} > {MAX_DIRECTORY_DEPTH}) en: {filename}"
+                        )
+
+                    # Ignorar carpetas y archivos binarios pesados
+                    if any(p in IGNORED_DIRS for p in parts):
+                        continue
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext in IGNORED_EXTENSIONS:
+                        continue
+
+                    # 4. Verificación de tamaño individual declarado en cabecera
+                    if member.file_size > MAX_SINGLE_FILE_SIZE:
+                        raise ZipBombViolation(
+                            f"El archivo '{filename}' declara {member.file_size} bytes, excediendo el límite individual de {MAX_SINGLE_FILE_SIZE} bytes."
+                        )
+
+                    # 5. Verificación de ratio de compresión (detección temprana de Zip Bomb)
+                    if member.compress_size > 0 and member.file_size > 1024 * 1024:
+                        ratio = member.file_size / member.compress_size
+                        if ratio > MAX_COMPRESSION_RATIO:
+                            raise ZipBombViolation(
+                                f"Ratio de compresión sospechoso ({ratio:.1f}x > {MAX_COMPRESSION_RATIO}x) en '{filename}'."
+                            )
+
+                    if member.is_dir():
+                        os.makedirs(target_path, exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                        bytes_this_file = 0
+                        with zf.open(member) as source, open(target_path, "wb") as target:
+                            while True:
+                                chunk = source.read(CHUNK_SIZE)
+                                if not chunk:
+                                    break
+                                bytes_this_file += len(chunk)
+                                total_uncompressed_size += len(chunk)
+
+                                if bytes_this_file > MAX_SINGLE_FILE_SIZE:
+                                    raise ZipBombViolation(
+                                        f"El archivo '{filename}' superó el tamaño máximo individual ({MAX_SINGLE_FILE_SIZE} bytes) durante la extracción."
+                                    )
+
+                                if total_uncompressed_size > MAX_ZIP_UNCOMPRESSED_SIZE:
+                                    raise ZipBombViolation(
+                                        f"El tamaño total descomprimido superó la cuota de {MAX_ZIP_UNCOMPRESSED_SIZE // (1024*1024)} MB."
+                                    )
+
+                                target.write(chunk)
+
+                        extracted_files.append(target_path)
+
+            return {
+                "project_name": project_name,
+                "project_dir": target_dir,
+                "extracted_count": len(extracted_files),
+                "total_uncompressed_bytes": total_uncompressed_size,
+                "files": extracted_files
+            }
+
+        except Exception as e:
+            # Rollback: Limpiar residuos parciales en caso de violación o error
+            if os.path.exists(target_dir):
+                shutil.rmtree(target_dir, ignore_errors=True)
+            logger.error(f"[ZipSecurity] Error durante la extracción de '{project_name}': {e}")
+            raise
 
     def diagnose_project(self, project_dir: str) -> Dict[str, Any]:
         """
         Ejecuta un diagnóstico profundo sobre el árbol de archivos extraído:
         - Validación estática AST en Python (errores de sintaxis exactos).
-        - Extracción de clases, funciones y llamadas a dependencias.
+        - Extracción y análisis de código JavaScript y TypeScript con Tree-sitter.
+        - Mapeo de llamadas y dependencias mediante CallGraph.
+        - Generación de propuestas estructuradas de mejora (ImprovementProposal).
         - Detección de patrones de riesgo (except vacíos, eval/exec).
         - Conteo de líneas de código y estadísticas por lenguaje.
         """
+        self.call_graph = CallGraph()
         resumen = {
             "total_files": 0,
             "total_lines": 0,
@@ -118,7 +285,9 @@ class ProjectCodeAnalyzer:
             "functions": [],
             "classes": [],
             "imports": set(),
-            "structure": []
+            "structure": [],
+            "proposals": [],
+            "call_graph_summary": {}
         }
 
         for root, dirs, files in os.walk(project_dir):
@@ -158,6 +327,45 @@ class ProjectCodeAnalyzer:
                 # Análisis específico para archivos Python
                 if ext == '.py':
                     self._analyze_python_ast(rel_path, content, resumen)
+                elif ext in ('.js', '.ts', '.jsx', '.tsx'):
+                    js_res = javascript_engine.analyze_javascript(content, filename=rel_path, mode="auto")
+                    for fn in js_res.get("funciones", []):
+                        resumen["functions"].append({
+                            "name": fn["nombre"],
+                            "file": rel_path,
+                            "line": fn.get("linea", 1),
+                            "lang": "JavaScript" if ext in ('.js', '.jsx') else "TypeScript"
+                        })
+                    for cls in js_res.get("clases", []):
+                        resumen["classes"].append({
+                            "name": cls["nombre"],
+                            "file": rel_path,
+                            "line": cls.get("linea", 1),
+                            "lang": "JavaScript" if ext in ('.js', '.jsx') else "TypeScript"
+                        })
+                    for imp in js_res.get("imports", []):
+                        clean_imp = imp.split()[0].strip("'\"")
+                        resumen["imports"].add(clean_imp)
+                        self.call_graph.add_dependency(rel_path, clean_imp)
+                    for issue in js_res.get("issues", []):
+                        resumen["warnings"].append({
+                            "file": rel_path,
+                            "archivo": rel_path,
+                            "line": 1,
+                            "type": "Calidad/Seguridad JS",
+                            "message": issue,
+                            "mensaje": issue
+                        })
+                    if not js_res.get("es_valido") and js_res.get("error_sintaxis"):
+                        err = js_res["error_sintaxis"]
+                        resumen["syntax_errors"].append({
+                            "file": rel_path,
+                            "archivo": rel_path,
+                            "line": err.get("linea", 1),
+                            "col": err.get("columna", 1),
+                            "type": "SyntaxError JS",
+                            "message": err.get("mensaje", "Error sintáctico JS")
+                        })
                 elif ext == '.json':
                     try:
                         json.loads(content)
@@ -174,7 +382,51 @@ class ProjectCodeAnalyzer:
                         })
 
         resumen["imports"] = sorted(list(resumen["imports"]))
+        resumen["call_graph_summary"] = {
+            "total_callers": len(self.call_graph.callers),
+            "total_callees": len(self.call_graph.callees),
+            "total_dependencies": len(self.call_graph.module_deps)
+        }
+        resumen["proposals"] = self.generate_proposals(resumen)
         return resumen
+
+    def impact_analysis(self, symbol_or_module: str) -> Dict[str, Any]:
+        """Calcula el impacto de modificar un símbolo o módulo."""
+        return self.call_graph.impact_analysis(symbol_or_module)
+
+    def generate_proposals(self, diagnosis: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Genera propuestas de mejora y refactorización accionables."""
+        proposals = []
+        prop_idx = 1
+
+        for w in diagnosis.get("warnings", []):
+            w_type = w.get("type", "")
+            f_path = w.get("file", "")
+            line = w.get("line", 1)
+
+            if "Except" in w_type:
+                proposals.append(ImprovementProposal(
+                    proposal_id=f"PROP-{prop_idx:03d}",
+                    target_file=f_path,
+                    target_symbol=f"L{line}",
+                    issue_type=ProposalType.RELIABILITY,
+                    description=f"Especificar tipo de excepción en {f_path}:{line} para evitar captura silenciosa indiscriminada.",
+                    diff_preview=f"- except:\n+ except Exception as e:\n+     logger.error(f'Error: {{e}}')",
+                ).to_dict())
+                prop_idx += 1
+
+            elif "Seguridad" in w_type or "eval" in w.get("message", "").lower():
+                proposals.append(ImprovementProposal(
+                    proposal_id=f"PROP-{prop_idx:03d}",
+                    target_file=f_path,
+                    target_symbol=f"L{line}",
+                    issue_type=ProposalType.SECURITY,
+                    description=f"Reemplazar ejecución de código dinámico en {f_path}:{line} por deserialización estructurada o AST seguro.",
+                    diff_preview=f"- eval(data)\n+ json.loads(data)",
+                ).to_dict())
+                prop_idx += 1
+
+        return proposals
 
     def _analyze_python_ast(self, rel_path: str, code: str, resumen: Dict[str, Any]):
         """Analiza la estructura sintáctica de un script Python usando AST."""
@@ -225,13 +477,27 @@ class ProjectCodeAnalyzer:
                     "line": node.lineno,
                     "is_async": isinstance(node, ast.AsyncFunctionDef)
                 })
+                # Mapear llamadas dentro de esta función para el CallGraph
+                for subnode in ast.walk(node):
+                    if isinstance(subnode, ast.Call):
+                        callee_name = ""
+                        if isinstance(subnode.func, ast.Name):
+                            callee_name = subnode.func.id
+                        elif isinstance(subnode.func, ast.Attribute):
+                            callee_name = subnode.func.attr
+                        if callee_name:
+                            self.call_graph.add_call(node.name, callee_name, file_path=rel_path)
             # Importaciones
             elif isinstance(node, ast.Import):
                 for alias in node.names:
-                    resumen["imports"].add(alias.name.split('.')[0])
+                    mod = alias.name.split('.')[0]
+                    resumen["imports"].add(mod)
+                    self.call_graph.add_dependency(rel_path, mod)
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
-                    resumen["imports"].add(node.module.split('.')[0])
+                    mod = node.module.split('.')[0]
+                    resumen["imports"].add(mod)
+                    self.call_graph.add_dependency(rel_path, mod)
             # Advertencias de calidad: except vacíos
             elif isinstance(node, ast.ExceptHandler):
                 if node.type is None:

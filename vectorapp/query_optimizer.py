@@ -6,8 +6,10 @@ y gestiona la caché en memoria para minimizar la latencia de respuesta.
 
 import re
 import time
-from typing import Dict, Any, Optional
+import math
+from typing import Dict, Any, Optional, Tuple, List, Set
 from enum import Enum
+from dataclasses import dataclass, field
 from datetime import datetime
 
 class QueryComplexity(Enum):
@@ -16,6 +18,32 @@ class QueryComplexity(Enum):
     MODERATE = "moderate"       # Preguntas generales, clima, recuerdos, identidad
     COMPLEX = "complex"         # Generación de código, herramientas, búsqueda web profunda
     INTENSIVE = "intensive"     # Diagnóstico AST de proyectos ZIP, introspección profunda, entrenamiento
+
+class IntentCategory(str, Enum):
+    """Categorías de intención semántica de consulta."""
+    CASUAL = "casual"
+    CODING = "coding"
+    REASONING = "reasoning"
+    MEMORY = "memory"
+    VISION = "vision"
+    WEB = "web"
+    TOOL_CREATION = "tool_creation"
+    PROJECT_ANALYSIS = "project_analysis"
+    DATABASE = "database"
+    SYSTEM = "system"
+
+@dataclass
+class QueryRouteResult:
+    """Resultado estructurado del enrutamiento híbrido de consultas."""
+    route: IntentCategory
+    complexity: QueryComplexity
+    complexity_score: float
+    tier: int  # 0: fast regex, 1: semantic intent, 2: llm/deep
+    confidence: float
+    suggested_config: Dict[str, Any]
+    fast_response: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
 
 class QueryOptimizer:
     """
@@ -112,6 +140,161 @@ class QueryOptimizer:
             return QueryComplexity.MODERATE
         else:
             return QueryComplexity.COMPLEX
+
+    def calculate_complexity_score(self, query: str) -> float:
+        """
+        Calcula un puntaje continuo de complejidad cognitiva estrictamente calibrado entre 0.00 y 1.00.
+        - 0.00 - 0.20: SIMPLE (saludos, respuestas directas)
+        - 0.21 - 0.45: MODERATE (preguntas generales, clima, memoria)
+        - 0.46 - 0.74: COMPLEX (generación de código, herramientas, búsqueda web)
+        - 0.75 - 1.00: INTENSIVE (diagnóstico ZIP, AST masivo, introspección profunda)
+        """
+        q = query.lower().strip()
+        words = q.split()
+        num_words = len(words)
+
+        # 1. Nivel Intensivo (0.75 - 1.00)
+        int_matches = [p for p in self.intensive_patterns if re.search(p, q)]
+        if int_matches:
+            score = 0.75 + min(0.25, (len(int_matches) - 1) * 0.10)
+            return round(min(1.00, score), 2)
+
+        # 2. Nivel Complejo (0.46 - 0.74)
+        comp_matches = [p for p in self.complex_patterns if re.search(p, q)]
+        has_code_syntax = any(tok in q for tok in ("function", "class ", "def ", "import ", "const ", "let ", "var ", "=>", "{}", "()", ";", "=="))
+        if comp_matches or has_code_syntax:
+            bonus = 0.05 if num_words > 8 else 0.0
+            score = 0.50 + min(0.24, (len(comp_matches) - 1) * 0.08 + bonus)
+            return round(min(0.74, score), 2)
+
+        # 3. Nivel Moderado (0.21 - 0.45)
+        mod_matches = [p for p in self.moderate_patterns if re.search(p, q)]
+        if mod_matches:
+            score = 0.25 + min(0.20, (len(mod_matches) - 1) * 0.05)
+            return round(min(0.45, score), 2)
+
+        # 4. Nivel Simple (0.01 - 0.20)
+        simp_matches = [p for p in self.simple_patterns if re.search(p, q)]
+        if simp_matches:
+            score = 0.05 + min(0.12, num_words * 0.03)
+            return round(min(0.20, score), 2)
+
+        # Heurística fallback por longitud y estructura
+        if num_words <= 3 and len(q) < 22:
+            return 0.15
+        elif len(q) < 90:
+            return 0.35
+        else:
+            return 0.55
+
+    def classify_intent(self, query: str) -> Tuple[IntentCategory, float]:
+        """
+        Clasifica la intención semántica nuclear de la consulta y retorna (IntentCategory, confianza).
+        """
+        q = query.lower().strip()
+
+        intent_rules = [
+            (IntentCategory.PROJECT_ANALYSIS, [
+                r'\b(?:analizar|analiza|diagnosticar|diagnóstico|diagnostico)\s+(?:proyecto|zip|repositorio|código)\b',
+                r'\b(?:archivo zip|proyecto zip|subir zip|descomprimir)\b'
+            ], 0.95),
+            (IntentCategory.TOOL_CREATION, [
+                r'\b(?:crear|generar|programar|construir)\s+(?:(?:un|una|el|la)\s+)?(?:herramienta|tool|función dinámica)\b',
+                r'\b(?:herramienta|tool)\s+(?:para|de)\b',
+                r'\b(?:nueva herramienta|adaptar herramienta)\b'
+            ], 0.92),
+            (IntentCategory.DATABASE, [
+                r'\b(?:sql|sqlite|base de datos|database|tabla|select|insert|update|query sql)\b',
+            ], 0.90),
+            (IntentCategory.VISION, [
+                r'\b(?:foto|imagen|cámara|camara|rostro|apariencia|ves|miras|yolo)\b',
+            ], 0.88),
+            (IntentCategory.CODING, [
+                r'\b(?:código|codigo|javascript|typescript|python|función|funcion|algoritmo|refactorizar|bug|error de sintaxis|ast)\b',
+                r'\b(?:script|npm|pip|compilar|depurar)\b'
+            ], 0.85),
+            (IntentCategory.WEB, [
+                r'\b(?:busca en internet|buscar en internet|noticias|clima|tiempo|temperatura|lloverá|chile|meteored)\b',
+                r'\b(?:web|google|enlaces|artículo|noticia)\b'
+            ], 0.85),
+            (IntentCategory.MEMORY, [
+                r'\b(?:recuerdas|recuerda|acuerdas|en tu memoria|qué sabes de|quién soy|cómo me llamo)\b',
+                r'\b(?:olvida|borra recuerdo|guarda esto)\b'
+            ], 0.88),
+            (IntentCategory.SYSTEM, [
+                r'\b(?:centinela|cpu|ram|memoria del sistema|hardware|gpu|temperatura cpu|recursos)\b',
+                r'\b(?:red neuronal|neuronas|poda|prune|entrenar red)\b'
+            ], 0.85),
+            (IntentCategory.CASUAL, [
+                r'^(?:hola|buenas|buenos días|buenos dias|buenas tardes|buenas noches|qué tal|saludos|gracias|adiós|ok|vale)[.!?]?$',
+                r'\b(?:cómo estás|como estas|cómo te sientes)\b'
+            ], 0.95),
+            (IntentCategory.REASONING, [
+                r'\b(?:por qué|por que|cómo funciona|explica|diferencia entre|compara|analiza|conclusión|razonamiento)\b',
+            ], 0.75),
+        ]
+
+        for intent, patterns, conf in intent_rules:
+            for pat in patterns:
+                if re.search(pat, q):
+                    return intent, conf
+
+        return IntentCategory.REASONING, 0.50
+
+    def route_query(self, query: str, user_name: Optional[str] = None) -> QueryRouteResult:
+        """
+        Enrutador híbrido de consultas:
+        - Nivel 0: Reglas deterministas y respuesta inmediata si aplica (<1ms).
+        - Nivel 1: Clasificación de intención semántica y complejidad continua (score 0.0 - 1.0).
+        """
+        q = query.strip()
+
+        # Nivel 0: Fast path
+        fast_resp = self.get_simple_response(q, user_name=user_name)
+        if fast_resp:
+            cfg = self.get_processing_config(QueryComplexity.SIMPLE)
+            return QueryRouteResult(
+                route=IntentCategory.CASUAL,
+                complexity=QueryComplexity.SIMPLE,
+                complexity_score=0.05,
+                tier=0,
+                confidence=1.0,
+                suggested_config=cfg,
+                fast_response=fast_resp,
+                metadata={"fast_path": True}
+            )
+
+        # Nivel 1: Clasificación semántica y complejidad continua
+        intent, confidence = self.classify_intent(q)
+        score = self.calculate_complexity_score(q)
+
+        # Mapeo score -> QueryComplexity
+        if score <= 0.20:
+            complexity = QueryComplexity.SIMPLE
+        elif score <= 0.45:
+            complexity = QueryComplexity.MODERATE
+        elif score <= 0.74:
+            complexity = QueryComplexity.COMPLEX
+        else:
+            complexity = QueryComplexity.INTENSIVE
+
+        # Ajuste por intención crítica
+        if intent in (IntentCategory.PROJECT_ANALYSIS, IntentCategory.TOOL_CREATION) and complexity.value in ("simple", "moderate"):
+            complexity = QueryComplexity.COMPLEX
+            score = max(score, 0.55)
+
+        cfg = self.get_processing_config(complexity)
+
+        return QueryRouteResult(
+            route=intent,
+            complexity=complexity,
+            complexity_score=score,
+            tier=1,
+            confidence=confidence,
+            suggested_config=cfg,
+            fast_response=None,
+            metadata={"classified_intent": intent.value}
+        )
 
     def get_processing_config(self, complexity: QueryComplexity) -> Dict[str, Any]:
         """
@@ -326,9 +509,10 @@ class QueryOptimizer:
                 
         return None
 
-    def record_performance(self, complexity: QueryComplexity, processing_time: float):
+    def record_performance(self, complexity: QueryComplexity, processing_time: float, query_id: str = "", interlocutor: str = "", intent: str = "", cache_hit: bool = False):
         """
-        Registra la telemetría de latencia calculando el promedio móvil acumulativo real.
+        Registra la telemetría de latencia calculando el promedio móvil acumulativo real
+        y alimentando el gestor de telemetría de Vector.
         """
         stats = self.query_stats[complexity.value]
         stats['count'] += 1
@@ -336,6 +520,21 @@ class QueryOptimizer:
         stats['avg_time'] = round(stats['total_time'] / stats['count'], 4)
         stats['min_time'] = round(min(stats['min_time'], processing_time), 4)
         stats['max_time'] = round(max(stats['max_time'], processing_time), 4)
+
+        try:
+            from .telemetry import telemetry_manager
+            telemetry_manager.record_query(
+                query_id=query_id or f"qry_{int(time.time()*1000)}",
+                interlocutor=interlocutor or "general",
+                intent=intent or complexity.value,
+                complexity_score=self.calculate_complexity_score(intent or complexity.value),
+                latency_ms=processing_time * 1000.0,
+                cache_hit=cache_hit,
+                status="success"
+            )
+        except Exception:
+            pass
+
 
     def cache_response(self, query: str, response: str, complexity: Optional[QueryComplexity] = None, user_name: Optional[str] = None):
         """

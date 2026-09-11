@@ -1,0 +1,22 @@
+[
+  {
+    "id": "tools_01",
+    "category": "execution",
+    "tool_name": "comparar_pares",
+    "parameters": {"numero": 6},
+    "expected_result": true
+  },
+  {
+    "id": "tools_02",
+    "category": "classification",
+    "code": "def execute_tool(action='calculate', **kwargs):\n    return kwargs",
+    "expected_level": "level_b"
+  },
+  {
+    "id": "tools_03",
+    "category": "adaptation",
+    "is_adaptation": true,
+    "code": "def adapted_tool():\n    pass",
+    "expected_level": "level_a"
+  }
+]

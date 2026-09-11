@@ -1,0 +1,22 @@
+[
+  {
+    "id": "coding_01",
+    "language": "javascript",
+    "code": "function saludar(nombre) { var el = document.getElementById('output'); el.innerHTML = location.search; }",
+    "expected_taint_vulnerabilities": 1,
+    "expected_ast_parse": true
+  },
+  {
+    "id": "coding_02",
+    "language": "javascript",
+    "code": "function calcular(x) { if (x == null) { return 0; } return x * 2; }",
+    "expected_weak_equality": true,
+    "expected_ast_parse": true
+  },
+  {
+    "id": "coding_03",
+    "language": "python",
+    "code": "def process_data(items):\n    try:\n        return [x.upper() for x in items]\n    except:\n        pass\n",
+    "expected_warning_type": "Bloque Except Vacío"
+  }
+]

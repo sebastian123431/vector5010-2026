@@ -9,9 +9,42 @@ from sklearn.metrics.pairwise import cosine_similarity
 import threading
 import time
 
+from enum import Enum
+from dataclasses import dataclass, field
+
+class SemanticRelationType(str, Enum):
+    """Tipos de relaciones semánticas entre neuronas y conceptos."""
+    RELATED_TO = "related_to"   # Asociación genérica o co-ocurrencia temática
+    IS_A = "is_a"               # Relación de taxonomía / herencia conceptual
+    PART_OF = "part_of"         # Relación de composición o inclusión
+    USES = "uses"               # Relación de uso o dependencia operativa
+    DEPENDS_ON = "depends_on"   # Dependencia funcional o causal estricta
+    CAUSES = "causes"           # Relación de causa y efecto
+    SOLVES = "solves"           # Solución aplicada a un problema o bug
+    ANSWER_TO = "answer_to"     # Respuesta o resolución a una pregunta/meta
+
+
+@dataclass
+class SemanticEdge:
+    """Arista tipada entre dos neuronas del grafo semántico."""
+    target_id: str
+    relation_type: SemanticRelationType = SemanticRelationType.RELATED_TO
+    strength: float = 0.5
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "target_id": self.target_id,
+            "relation_type": self.relation_type.value if hasattr(self.relation_type, "value") else str(self.relation_type),
+            "strength": self.strength,
+            "metadata": self.metadata
+        }
+
+
 class SemanticNeuron:
     """
-    Representa una neurona semántica que almacena un concepto/recuerdo específico.
+    Representa una neurona semántica que almacena un concepto/recuerdo específico,
+    con conexiones tipadas y peso de activación hebbiano.
     """
     def __init__(self, neuron_id: str, content: str, concept_type: str = "general"):
         self.id = neuron_id
@@ -22,7 +55,8 @@ class SemanticNeuron:
         self.last_activation = datetime.now()
         self.activation_count = 0
         self.importance_score = 1.0
-        self.connections = {}  # {neuron_id: connection_strength}
+        self.connections = {}  # {neuron_id: connection_strength} (Compatibilidad retroactiva)
+        self.typed_edges = {}  # {neuron_id: SemanticEdge} (Relaciones tipadas avanzadas)
         self.semantic_vector = None
         self.learning_rate = 0.1
         self.decay_rate = 0.01
@@ -40,30 +74,51 @@ class SemanticNeuron:
         if self.activation_level < 0.01:
             self.activation_level = 0.0
             
-    def connect_to(self, other_neuron_id: str, strength: float):
-        """Establece una conexión con otra neurona."""
+    def connect_to(self, other_neuron_id: str, strength: float, relation_type: Any = SemanticRelationType.RELATED_TO):
+        """Establece una conexión tipada con otra neurona."""
+        rel = relation_type if isinstance(relation_type, SemanticRelationType) else SemanticRelationType(str(relation_type))
         self.connections[other_neuron_id] = strength
+        self.typed_edges[other_neuron_id] = SemanticEdge(
+            target_id=other_neuron_id,
+            relation_type=rel,
+            strength=strength
+        )
+
+    def connect_typed(self, other_neuron_id: str, relation_type: SemanticRelationType, strength: float = 0.5):
+        """Método explícito para conectar con relación tipada."""
+        self.connect_to(other_neuron_id, strength, relation_type=relation_type)
         
     def strengthen_connection(self, other_neuron_id: str, amount: float = 0.1):
         """Fortalece la conexión con otra neurona."""
         if other_neuron_id in self.connections:
-            self.connections[other_neuron_id] = min(1.0, 
-                self.connections[other_neuron_id] + amount)
+            new_s = min(1.0, self.connections[other_neuron_id] + amount)
+            self.connections[other_neuron_id] = new_s
+            if other_neuron_id in self.typed_edges:
+                self.typed_edges[other_neuron_id].strength = new_s
         else:
-            self.connections[other_neuron_id] = amount
+            self.connect_to(other_neuron_id, amount)
             
     def weaken_connection(self, other_neuron_id: str, amount: float = 0.05):
         """Debilita la conexión con otra neurona."""
         if other_neuron_id in self.connections:
-            self.connections[other_neuron_id] = max(0.0, 
-                self.connections[other_neuron_id] - amount)
+            new_s = max(0.0, self.connections[other_neuron_id] - amount)
+            self.connections[other_neuron_id] = new_s
+            if other_neuron_id in self.typed_edges:
+                self.typed_edges[other_neuron_id].strength = new_s
             if self.connections[other_neuron_id] < 0.1:
                 del self.connections[other_neuron_id]
+                self.typed_edges.pop(other_neuron_id, None)
                 
     def get_related_neurons(self, threshold: float = 0.3) -> List[str]:
         """Obtiene neuronas relacionadas por encima de un umbral."""
         return [nid for nid, strength in self.connections.items() 
                 if strength >= threshold]
+
+    def get_typed_edges(self, relation_type: Optional[SemanticRelationType] = None) -> List[SemanticEdge]:
+        """Filtra aristas por tipo de relación semántica."""
+        if relation_type is None:
+            return list(self.typed_edges.values())
+        return [edge for edge in self.typed_edges.values() if edge.relation_type == relation_type]
     
     def to_dict(self) -> Dict[str, Any]:
         """Convierte la neurona a diccionario para serialización."""
@@ -77,6 +132,7 @@ class SemanticNeuron:
             'activation_count': self.activation_count,
             'importance_score': self.importance_score,
             'connections': self.connections,
+            'typed_edges': {nid: edge.to_dict() for nid, edge in self.typed_edges.items()},
             'learning_rate': self.learning_rate,
             'decay_rate': self.decay_rate
         }
@@ -99,6 +155,29 @@ class SemanticNeuron:
         neuron.connections = data.get('connections', {})
         neuron.learning_rate = data.get('learning_rate', 0.1)
         neuron.decay_rate = data.get('decay_rate', 0.01)
+
+        # Cargar aristas tipadas si existen, o instanciar a partir de connections
+        raw_edges = data.get('typed_edges', {})
+        if raw_edges:
+            for nid, edge_data in raw_edges.items():
+                try:
+                    rel_type = SemanticRelationType(edge_data.get('relation_type', 'related_to'))
+                except Exception:
+                    rel_type = SemanticRelationType.RELATED_TO
+                neuron.typed_edges[nid] = SemanticEdge(
+                    target_id=nid,
+                    relation_type=rel_type,
+                    strength=edge_data.get('strength', neuron.connections.get(nid, 0.5)),
+                    metadata=edge_data.get('metadata', {})
+                )
+        else:
+            for nid, strength in neuron.connections.items():
+                neuron.typed_edges[nid] = SemanticEdge(
+                    target_id=nid,
+                    relation_type=SemanticRelationType.RELATED_TO,
+                    strength=strength
+                )
+
         if 'semantic_vector' in data and data['semantic_vector']:
             neuron.semantic_vector = np.array(data['semantic_vector'], dtype=np.float32)
         return neuron

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "memory_01",
+    "type": "scoring",
+    "similarity": 0.9,
+    "importance": 0.8,
+    "age_hours": 0.5,
+    "access_count": 5,
+    "confidence": 1.0,
+    "min_expected_score": 0.70
+  },
+  {
+    "id": "memory_02",
+    "type": "decay",
+    "similarity": 0.9,
+    "importance": 0.8,
+    "age_hours": 720.0,
+    "access_count": 1,
+    "confidence": 0.5,
+    "max_expected_score": 0.65
+  },
+  {
+    "id": "memory_03",
+    "type": "types",
+    "memory_types": ["episodic", "semantic", "procedural", "preference", "technical", "visual"]
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "safety_01",
+    "type": "ast_malicious_import",
+    "code": "import os\nos.system('calc.exe')",
+    "expected_blocked": true
+  },
+  {
+    "id": "safety_02",
+    "type": "path_traversal_tool_name",
+    "tool_name": "../../etc/evil_tool",
+    "expected_sanitized": "evil_tool"
+  },
+  {
+    "id": "safety_03",
+    "type": "dangerous_eval",
+    "code": "eval('__import__(\"os\").system(\"dir\")')",
+    "expected_blocked": true
+  }
+]

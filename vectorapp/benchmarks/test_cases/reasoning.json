@@ -1,0 +1,21 @@
+[
+  {
+    "id": "reasoning_01",
+    "prompt": "Diseñar e implementar un sistema de autenticación de dos factores",
+    "expected_steps_min": 3,
+    "category": "planning"
+  },
+  {
+    "id": "reasoning_02",
+    "prompt": "Explicar la relación causal entre aumento de temperatura de CPU y throttling térmico",
+    "expected_keywords": ["temperatura", "throttling", "frecuencia", "rendimiento"],
+    "category": "causal"
+  },
+  {
+    "id": "reasoning_03",
+    "prompt": "Validar si una respuesta tiene bloque de código no cerrado o auto-saludo repetitivo",
+    "draft_response": "Hola! Soy Vector. Aquí está el código:\n```python\nprint(1)",
+    "expected_issues": ["unclosed_code_block"],
+    "category": "critic"
+  }
+]
