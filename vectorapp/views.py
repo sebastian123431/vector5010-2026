@@ -1034,14 +1034,23 @@ def preparar_contexto_vector(
         "cuéntame del tiempo", "cuentame del tiempo", "háblame del tiempo", "hablame del tiempo"
     ]
 
+    # Detección de temáticas incompatibles con clima (visión, fotos, reconocimiento, código, identidad)
+    es_tema_no_clima = any(w in mensaje_lower for w in [
+        "foto", "imagen", "cámara", "camara", "rostro", "cara", "reconocerme", "identificarme",
+        "código", "codigo", "python", "javascript", "script", "función", "funcion", "modulo", "módulo",
+        "quién soy", "quien soy", "cómo me llamo", "como me llamo", "mi nombre",
+        "cómo te sientes", "como te sientes", "mejoras hechas", "arquitectura", "memoria"
+    ])
+
     # Continuidad temática de clima en preguntas de seguimiento multivuelta
     tema_previo_clima = False
     if historial_input and isinstance(historial_input, list):
         ultimos_textos = " ".join([t.get("content", "").lower() for t in historial_input[-8:] if isinstance(t, dict)])
         terminos_hist_clima = [
-            "clima", "tiempo", "lluvia", "lluva", "llover", "precipitaciones", "precipitacion",
+            "el clima", "el tiempo", "pronóstico del tiempo", "pronostico del tiempo", "reporte meteorológico",
+            "lluvia", "lluva", "llover", "precipitaciones", "precipitacion",
             "temperatura", "garugar", "granizar", "granizo", "pronóstico", "pronostico",
-            "meteorológic", "meteorologic", "gotas", "chubascos", "vicuña", "vicuna", "peñuelas", "serena"
+            "meteorológic", "meteorologic", "chubascos"
         ]
         if any(w in ultimos_textos for w in terminos_hist_clima):
             tema_previo_clima = True
@@ -1074,12 +1083,12 @@ def preparar_contexto_vector(
     saludos_base = ["hola", "buenas", "buenos dias", "buenos días", "buenas tardes", "buenas noches", "que tal", "qué tal", "como estas", "cómo estás"]
     es_saludo_puro = any(s in mensaje_lower for s in saludos_base) and not any(w in mensaje_lower for w in ["clima", "tiempo", "lluvia", "lluva", "llover", "precipitacion", "precipitaciones", "temperatura", "garugar", "granizar", "pronostico", "pronóstico", "hora", "fecha", "sitios", "fuentes"])
 
-    if not ciudad_detectada:
+    if not ciudad_detectada and not es_tema_no_clima and not es_saludo_puro:
         if pide_zona_relativa and session is not None and session.get("active_location"):
             ciudad_detectada = session.get("active_location")
         elif info_enlace and info_enlace.get("tipo") == "google_maps":
             ciudad_detectada = info_enlace.get("query_clima") or info_enlace.get("ciudad")
-        elif (tema_previo_clima and not es_saludo_puro) or any(w in mensaje_lower for w in ["lluvia", "lluva", "llover", "garugar", "granizar"]):
+        elif any(w in mensaje_lower for w in ["lluvia", "lluva", "llover", "garugar", "granizar", "precipitaciones", "precipitacion", "chubascos"]) or (tema_previo_clima and any(p in mensaje_lower for p in palabras_seguimiento_clima)):
             for turn in reversed(historial_input):
                 cont = turn.get("content", "").lower()
                 for c_cand in ["peñuelas", "penuelas", "vicuña", "vicuna", "la serena", "coquimbo", "santiago", "valparaíso", "antofagasta"]:
@@ -1093,7 +1102,7 @@ def preparar_contexto_vector(
         elif any(p in mensaje_lower for p in patrones_clima_informal) or pide_zona_relativa:
             ciudad_detectada = session.get("active_location") if session is not None and session.get("active_location") else "Vicuña,Chile"
 
-    if es_saludo_puro:
+    if es_saludo_puro or es_tema_no_clima:
         ciudad_detectada = None
 
     if ciudad_detectada:
@@ -1650,7 +1659,11 @@ def preparar_contexto_vector(
         "puedes ver fotos", "puedes ver imagenes", "puedes ver imágenes", "como ves las imagenes",
         "cómo ves las imágenes", "como miras las fotos", "cómo miras las fotos",
         "que ves en las fotos", "qué ves en las fotos", "como funciona tu vision", "cómo funciona tu visión",
-        "como analizas fotos", "cómo analizas fotos"
+        "como analizas fotos", "cómo analizas fotos",
+        "puedes reconocerme", "me puedes reconocer", "si te mando una foto", "si te paso una foto",
+        "si te envio una foto", "si te envío una foto", "reconocimiento facial", "reconocer mi rostro",
+        "reconocer mi cara", "puedes identificarme", "sabes reconocer caras", "sabes reconocer rostros",
+        "reconocerme si te mando una foto", "reconocerme si te paso una foto"
     ]
     es_consulta_como_ve_fotos = any(p in mensaje_lower for p in patrones_como_ves_fotos)
 
@@ -1830,17 +1843,16 @@ def preparar_contexto_vector(
         except Exception as e_rec:
             logger.warning(f"Error consultando memoria visual en BD: {e_rec}")
 
-    # Consulta sobre cómo analiza o ve las fotos
+    # Consulta sobre cómo analiza fotos o capacidades de reconocimiento facial
     if es_consulta_como_ve_fotos:
         contexto_como_ve_fotos = (
-            f"\nDIRECTIVA SOBRE ARQUITECTURA Y ANÁLISIS DE FOTOS:\n"
-            f"{interlocutor_ref} te pregunta cómo ves o analizas las fotos que te adjuntan. "
-            f"Explica con orgullo de ingeniería tu arquitectura multimodal J.A.R.V.I.S.:\n"
-            f"1. OpenCV & Haar Cascades: Procesamiento fotográfico de imagen (resolución, formato vertical/horizontal, nivel de luminosidad, nitidez laplaciana, contraste y detección biométrica de rostros).\n"
-            f"2. Red Neuronal Convolucional YOLOv3 (Darknet): Detección y localización de personas, vestimenta y objetos del entorno en tiempo real.\n"
-            f"3. Base de Datos SQLite & Red Semántica: Capacidad de persistir las fotos en el disco ('media/user_photos/'), guardar registros de identidad visual en la tabla MemoryEntry (con vectores Nomic de 768 dimensiones) y enlazar las identidades a tu mapa mental de 402 neuronas.\n"
-            f"4. Modalidades: Aceptas tanto fotografías adjuntas desde el explorador/chat como fotogramas en vivo desde la cámara web del Centinela.\n"
-            f"Sé claro, técnico y elegante.\n"
+            f"\nDIRECTIVA SOBRE CAPACIDADES DE VISIÓN Y RECONOCIMIENTO FACIAL:\n"
+            f"{interlocutor_ref} te pregunta si puedes reconocerlo/a, ver fotos o cómo funciona tu visión computacional. "
+            f"Respóndele afirmativamente con total seguridad, entusiasmo y estilo J.A.R.V.I.S.:\n"
+            f"1. Confirma directamente que SÍ puedes reconocer su rostro: cuentas con visión artificial equipada con OpenCV (Haar Cascades) para detección facial y la red neuronal convolucional YOLOv3 (Darknet) para detección y localización de personas y objetos en tiempo real.\n"
+            f"2. Explícale con claridad que cuando te adjunte una fotografía diciendo 'mira, este soy yo' (o presentándose), analizarás sus rasgos faciales, iluminación y composición, y registrarás su identidad visual en tu base de datos SQLite y memoria vectorial (con vectores Nomic) enlazada a tu red semántica para recordarlo(a) en futuras sesiones.\n"
+            f"3. Invítalo(a) amablemente a enviarte una fotografía suya cuando guste para registrarla en el sistema.\n"
+            f"Sé claro, asertivo y elegante.\n"
         )
 
     directiva_clima_str = (
